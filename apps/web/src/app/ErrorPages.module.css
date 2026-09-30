@@ -1,0 +1,18 @@
+.page {
+  display: grid;
+  justify-items: start;
+  gap: var(--spacingM);
+  padding: var(--spacingXXXL) var(--spacingL);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fontSizeBase600);
+  line-height: var(--lineHeightBase600);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.text {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}

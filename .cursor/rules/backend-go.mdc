@@ -1,0 +1,1495 @@
+---
+description: Go backend conventions (reused from demo-ui/.cursor/rules/backend-service-rule.mdc).
+globs: apps/api/**/*.go,apps/api/**/*.sql,api/openapi.yaml
+alwaysApply: false
+---
+<!-- GENERATED from .agents/rules/backend-go.md by scripts/sync-agents.mjs. Do not edit. -->
+
+> Source: demo-ui/.cursor/rules/backend-service-rule.mdc (copied 2026-09-30). The lock-free channel cache pattern is optional here; adopt per module via ADR. Deviations are recorded in ADR/0003.
+
+
+# AI Coding Standards & Module Creation Guide
+
+This document provides comprehensive guidelines for AI agents creating or modifying modules in this codebase.
+
+---
+
+## 1. Module Directory Structure
+
+Every module follows this standard structure:
+
+```
+internal/modules/{module}/
+├── {module}mdl/
+│   ├── {module}.go          # Database entity model
+│   ├── {module}_req.go      # Request models (API input)
+│   ├── {module}_rsp.go      # Response models (API output)
+│   └── {module}_dto.go      # Data transformation objects
+├── {module}svc/
+│   ├── {module}svc.go       # Service definition, lifecycle, public API
+│   ├── {module}svc_ops.go   # Ops thread: CREATE, UPDATE, DELETE handlers
+│   ├── {module}svc_query.go # Query thread: GET, LIST handlers
+│   └── {module}_cache.go    # Cache implementation (if needed)
+└── {module}hdlr/
+    └── {module}hdlr.go      # HTTP handlers
+```
+
+**Rules:**
+- ALL models live in `{module}mdl/` (entities, requests, responses, DTOs)
+- NO global `internal/models/` directory - each module owns its models
+- Business logic lives in `{module}svc/`
+- Transport logic (HTTP) lives in `{module}hdlr/`
+- Database access is performed ONLY by the Service layer, NEVER by Handlers
+- Cross-module model references use imports (e.g., `usermdl.User`)
+
+---
+
+## 2. Architecture: Lock-Free Channel Pattern (CRITICAL)
+
+The application uses a specific concurrency pattern to avoid mutex contention in hot paths.
+
+**Rules:**
+- Use write-first caching (DB write → cache update)
+- Lock-free caching using channels
+- `sync.Mutex` must NOT be used for caching
+
+### Pattern Overview
+
+Every Service (`*Svc`) runs two dedicated goroutines:
+1. **`opsRunThread`** (Writer): Handles all `CREATE`, `UPDATE`, `DELETE` operations
+2. **`queryRunThread`** (Reader): Handles all `GET`, `LIST` operations. Owns the in-memory cache
+
+### Data Flow
+
+```
+Handler → Channel → Service Goroutine → DB/Cache → Channel → Handler
+```
+
+---
+
+## 3. Service Layer Implementation
+
+### 3.1 Service Struct (`{module}svc.go`)
+
+```go
+package foosvc
+
+import (
+    "fmt"
+    "log"
+    "sync/atomic"
+    "time"
+
+    "<PROJECT>/internal/config"
+    "<PROJECT>/internal/database"
+    "<PROJECT>/internal/models"
+)
+
+// --- Message types ---
+
+type opsType string
+
+const (
+    opsCreate opsType = "create"
+    opsUpdate opsType = "update"
+    opsDelete opsType = "delete"
+)
+
+type queryType string
+
+const (
+    queryGetByID         queryType = "get_by_id"
+    queryList            queryType = "list"
+    queryIntCacheAdd     queryType = "int_cache_add"
+    queryIntCacheUpdate  queryType = "int_cache_update"
+    queryIntCacheRemove  queryType = "int_cache_remove"
+    queryIntCacheRefresh queryType = "int_cache_refresh"
+)
+
+type runMsgReq struct {
+    msgType interface{}
+    msgData interface{}
+    rspCh   chan *runMsgRsp
+}
+
+type runMsgRsp struct {
+    err  error
+    data interface{}
+}
+
+// --- Service ---
+
+type StateCallback struct {
+    Started func()
+    Stopped func()
+}
+
+type FooSvc struct {
+    cfg           *config.ConfigServer
+    db            *database.PGSQLSvc
+    cache         *fooCache
+    stateCallback *StateCallback
+    logger        *log.Logger
+
+    opsCh       chan *runMsgReq
+    queryCh     chan *runMsgReq
+    activeCalls *atomic.Int64
+    svcState    *atomic.Uint64 // 0: stopped, 1: running, 2: stopping
+}
+
+func NewFooSvc(cfg *config.ConfigServer, db *database.PGSQLSvc, cb *StateCallback, logger *log.Logger) *FooSvc {
+    return &FooSvc{
+        cfg:           cfg,
+        db:            db,
+        cache:         newFooCache(logger),
+        stateCallback: cb,
+        logger:        logger,
+        opsCh:         make(chan *runMsgReq, *cfg.Cache.OpsChSize),
+        queryCh:       make(chan *runMsgReq, *cfg.Cache.QueryChSize),
+        activeCalls:   &atomic.Int64{},
+        svcState:      &atomic.Uint64{},
+    }
+}
+```
+
+### 3.2 Lifecycle Methods
+
+```go
+func (o *FooSvc) Start() error {
+    if !o.svcState.CompareAndSwap(0, 1) {
+        return fmt.Errorf("foo service already started")
+    }
+    go func() {
+        if o.stateCallback != nil && o.stateCallback.Started != nil {
+            o.stateCallback.Started()
+        }
+        o.run()
+        if o.stateCallback != nil && o.stateCallback.Stopped != nil {
+            o.stateCallback.Stopped()
+        }
+    }()
+    return nil
+}
+
+func (o *FooSvc) Stop() {
+    o.svcState.CompareAndSwap(1, 2)
+}
+
+func (o *FooSvc) sendReq(ch chan *runMsgReq, msgType interface{}, data interface{}) (interface{}, error) {
+	if o.svcState.Load() != 1 {
+		return nil, fmt.Errorf("service not running")
+	}
+	o.activeCalls.Add(1)
+	defer o.activeCalls.Add(-1)
+	rspCh := make(chan *runMsgRsp, 1)
+	ch <- &runMsgReq{msgType: msgType, msgData: data, rspCh: rspCh}
+	rsp := <-rspCh
+	return rsp.data, rsp.err
+}
+
+func (o *FooSvc) run() {
+    o.logger.Println("FooSvc: run started")
+    go o.opsRunThread()
+    go o.queryRunThread()
+
+    ticker := time.NewTicker(time.Second)
+    defer ticker.Stop()
+    for o.svcState.Load() == 1 {
+        <-ticker.C
+    }
+
+    for o.activeCalls.Load() > 0 || len(o.opsCh) > 0 || len(o.queryCh) > 0 {
+        o.drainChannel(o.opsCh)
+        o.drainChannel(o.queryCh)
+        time.Sleep(100 * time.Millisecond)
+    }
+    o.logger.Println("FooSvc: run stopped")
+}
+
+func (o *FooSvc) drainChannel(ch chan *runMsgReq) {
+    for len(ch) > 0 {
+        req := <-ch
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("service stopped")}
+    }
+}
+```
+
+### 3.3 Public API Methods
+
+```go
+// --- Ops (writes) ---
+
+type CreateFooReq struct {
+    Name      string
+    AccountID string
+    UserID    string
+}
+
+func (o *FooSvc) CreateFoo(req *CreateFooReq) (*models.Foo, error) {
+    rsp, err := o.sendReq(o.opsCh, opsCreate, req)
+    if err != nil {
+        return nil, err
+    }
+    return rsp.(*models.Foo), nil
+}
+
+// --- Query (reads) ---
+
+type GetByIDReq struct {
+    ID        string
+    AccountID string
+    UserID    string
+}
+
+func (o *FooSvc) GetByID(req *GetByIDReq) (*models.Foo, error) {
+    rsp, err := o.sendReq(o.queryCh, queryGetByID, req)
+    if err != nil {
+        return nil, err
+    }
+    if rsp == nil {
+        return nil, nil
+    }
+    return rsp.(*models.Foo), nil
+}
+```
+
+---
+
+## 4. Ops Thread Implementation (`{module}svc_ops.go`)
+
+Handles all write operations (CREATE, UPDATE, DELETE).
+
+### 4.1 Loop Pattern Options
+
+| Pattern | When to Use |
+|---------|-------------|
+| `for req := range o.opsCh` | **Preferred.** Simple, clean. Channel close triggers exit. |
+| `select` with ticker | When periodic background tasks are needed (cleanup, health checks). |
+
+**Note:** The range pattern relies on channel close for shutdown. Ensure `run()` closes `opsCh` during graceful shutdown, or use the select pattern if state-based shutdown is required.
+
+```go
+package foosvc
+
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "<PROJECT>/internal/cachenotify"
+    "<PROJECT>/internal/database"
+    "<PROJECT>/internal/models"
+)
+
+func notifyRefresh(db *database.PGSQLSvc) {
+    ctx := context.Background()
+    pool, err := db.GetDBInstance(ctx)
+    if err != nil {
+        return
+    }
+    _, _ = pool.Exec(ctx, "NOTIFY "+cachenotify.ChannelFoo)
+}
+
+// --- Option A: Range loop (preferred for ops thread) ---
+// Simpler, blocks until channel closes. Use when no periodic tasks needed.
+
+func (o *FooSvc) opsRunThread() {
+    o.logger.Println("FooSvc: opsRunThread started")
+    defer o.logger.Println("FooSvc: opsRunThread stopped")
+
+    for req := range o.opsCh {
+        var rsp *runMsgRsp
+        switch req.msgType {
+        case opsCreate:
+            rsp = o.handleCreate(req.msgData.(*CreateFooReq))
+        case opsUpdate:
+            rsp = o.handleUpdate(req.msgData.(*UpdateFooReq))
+        case opsDelete:
+            rsp = o.handleDelete(req.msgData.(*DeleteFooReq))
+        default:
+            rsp = &runMsgRsp{err: fmt.Errorf("unknown ops type: %v", req.msgType)}
+        }
+        req.rspCh <- rsp
+    }
+}
+
+// --- Option B: Select with ticker ---
+// Use when you need periodic tasks (e.g., background cleanup, health checks).
+
+func (o *FooSvc) opsRunThreadWithTicker() {
+    o.logger.Println("FooSvc: opsRunThread started")
+    ticker := time.NewTicker(time.Second)
+    defer ticker.Stop()
+
+    for o.svcState.Load() == 1 {
+        select {
+        case req := <-o.opsCh:
+            o.opsHandleReq(req)
+        case <-ticker.C:
+            // Periodic task here if needed
+        }
+    }
+    o.logger.Println("FooSvc: opsRunThread stopped")
+}
+
+// --- Handler dispatch (for Option B) ---
+
+func (o *FooSvc) opsHandleReq(req *runMsgReq) {
+    switch req.msgType.(opsType) {
+    case opsCreate:
+        o.opsHandleCreate(req)
+    case opsUpdate:
+        o.opsHandleUpdate(req)
+    case opsDelete:
+        o.opsHandleDelete(req)
+    default:
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("unknown ops type")}
+    }
+}
+
+func (o *FooSvc) opsHandleCreate(req *runMsgReq) {
+    data := req.msgData.(*CreateFooReq)
+    ctx := context.Background()
+
+    pool, err := o.db.GetDBInstance(ctx)
+    if err != nil {
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("db: %w", err)}
+        return
+    }
+
+    tx, err := pool.Begin(ctx)
+    if err != nil {
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("begin tx: %w", err)}
+        return
+    }
+    defer tx.Rollback(ctx) //nolint:errcheck
+
+    // Set session context for RLS
+    if _, err := tx.Exec(ctx, "SELECT set_session_context($1, $2)", data.AccountID, data.UserID); err != nil {
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("set context: %w", err)}
+        return
+    }
+
+    var foo models.Foo
+    err = tx.QueryRow(ctx,
+        `INSERT INTO foos (name, account_id)
+         VALUES ($1, $2)
+         RETURNING id, name, account_id, status, created_at, updated_at`,
+        data.Name, data.AccountID,
+    ).Scan(&foo.ID, &foo.Name, &foo.AccountID, &foo.Status, &foo.CreatedAt, &foo.UpdatedAt)
+    if err != nil {
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("insert: %w", err)}
+        return
+    }
+
+    if err := tx.Commit(ctx); err != nil {
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("commit: %w", err)}
+        return
+    }
+
+    if err := tx.Commit(ctx); err != nil {
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("commit: %w", err)}
+        return
+    }
+
+    // Notify OTHER instances FIRST (they'll refresh from DB)
+    notifyRefresh(o.db)
+
+    // Then update LOCAL cache (optimization)
+    rspCh := make(chan *runMsgRsp, 1)
+    o.queryCh <- &runMsgReq{msgType: queryIntCacheAdd, msgData: &foo, rspCh: rspCh}
+    <-rspCh
+
+    o.logger.Printf("Foo created: %s (%s)", foo.Name, foo.ID)
+    req.rspCh <- &runMsgRsp{data: &foo}
+}
+```
+
+---
+
+## 5. Query Thread Implementation (`{module}svc_query.go`)
+
+Handles all read operations. Owns the cache.
+
+### 5.1 Cache Preload on Startup (CRITICAL)
+
+**Rule:** The cache MUST be fully loaded from the database BEFORE the query thread starts processing requests.
+
+**Pattern:**
+1. Load cache synchronously at the start of `queryRunThread()`
+2. Retry indefinitely on failure (service cannot function without cache)
+3. Only after successful load, start processing channel messages
+4. Periodic refresh runs in the background via ticker
+
+**Why this matters:**
+- Ensures all read operations have data available immediately
+- Prevents empty responses during startup window
+- Guarantees consistency between cache and database state
+
+```go
+package foosvc
+
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "<PROJECT>/internal/models"
+)
+
+func (o *FooSvc) queryRunThread() {
+    o.logger.Println("FooSvc: queryRunThread started")
+    ctx := context.Background()
+
+    // ============================================
+    // CRITICAL: Preload cache BEFORE processing requests
+    // ============================================
+    // Retry indefinitely until cache is loaded.
+    // Service cannot serve reads without populated cache.
+    for {
+        err := o.cache.loadFromDB(ctx, o.db)
+        if err == nil {
+            break
+        }
+        o.logger.Printf("foo cache initial load error: %v (retrying in 2s)", err)
+        time.Sleep(2 * time.Second)
+    }
+    // ============================================
+
+    // Periodic refresh from config
+    refresh := time.Duration(*o.cfg.Cache.SyncIntervalSecs) * time.Second
+    ticker := time.NewTicker(refresh)
+    defer ticker.Stop()
+
+    // Main event loop - only starts AFTER cache is loaded
+    for o.svcState.Load() == 1 {
+        select {
+        case req := <-o.queryCh:
+            o.queryHandleReq(req)
+        case <-ticker.C:
+            _ = o.cache.loadFromDB(ctx, o.db)
+        }
+    }
+    o.logger.Println("FooSvc: queryRunThread stopped")
+}
+
+func (o *FooSvc) queryHandleReq(req *runMsgReq) {
+    t, _ := req.msgType.(queryType)
+    switch t {
+    case queryGetByID:
+        o.queryHandleGetByID(req)
+    case queryList:
+        o.queryHandleList(req)
+    case queryIntCacheAdd:
+        if f, ok := req.msgData.(*models.Foo); ok {
+            o.cache.add(f)
+        }
+        req.rspCh <- &runMsgRsp{}
+    case queryIntCacheUpdate:
+        if f, ok := req.msgData.(*models.Foo); ok {
+            o.cache.update(f)
+        }
+        req.rspCh <- &runMsgRsp{}
+    case queryIntCacheRemove:
+        if id, ok := req.msgData.(string); ok {
+            o.cache.remove(id)
+        }
+        req.rspCh <- &runMsgRsp{}
+    case queryIntCacheRefresh:
+        _ = o.cache.loadFromDB(context.Background(), o.db)
+        req.rspCh <- &runMsgRsp{}
+    default:
+        req.rspCh <- &runMsgRsp{err: fmt.Errorf("unknown query type")}
+    }
+}
+
+func (o *FooSvc) queryHandleGetByID(req *runMsgReq) {
+    data := req.msgData.(*GetByIDReq)
+    foo, ok := o.cache.getByID(data.ID)
+    if !ok {
+        req.rspCh <- &runMsgRsp{data: nil}
+        return
+    }
+    req.rspCh <- &runMsgRsp{data: foo}
+}
+
+func (o *FooSvc) queryHandleList(req *runMsgReq) {
+    data := req.msgData.(*ListReq)
+    items := o.cache.listByAccount(data.AccountID)
+    if items == nil {
+        items = []*models.Foo{}
+    }
+    req.rspCh <- &runMsgRsp{data: items}
+}
+```
+
+---
+
+## 6. Cache Implementation (`{module}_cache.go`)
+
+Only the query goroutine accesses the cache (no locks needed).
+
+```go
+package foosvc
+
+import (
+	"context"
+	"fmt"
+
+	"<PROJECT>/internal/cachenotify"
+	"<PROJECT>/internal/database"
+	"<PROJECT>/internal/models"
+)
+
+type fooCache struct {
+    byID        map[string]*models.Foo
+    byAccountID map[string][]*models.Foo
+    logger      *log.Logger
+}
+
+func newFooCache(logger *log.Logger) *fooCache {
+    return &fooCache{
+        byID:        make(map[string]*models.Foo),
+        byAccountID: make(map[string][]*models.Foo),
+        logger:      logger,
+    }
+}
+
+func (c *fooCache) loadFromDB(ctx context.Context, db *database.PGSQLSvc) error {
+    pool, err := db.GetDBInstance(ctx)
+    if err != nil {
+        return err
+    }
+    rows, err := pool.Query(ctx,
+        `SELECT id, name, account_id, status, created_at, updated_at FROM foos`)
+    if err != nil {
+        return err
+    }
+    defer rows.Close()
+
+    byID := make(map[string]*models.Foo)
+    byAccountID := make(map[string][]*models.Foo)
+
+    for rows.Next() {
+        f := &models.Foo{}
+        if err := rows.Scan(&f.ID, &f.Name, &f.AccountID, &f.Status, &f.CreatedAt, &f.UpdatedAt); err != nil {
+            return err
+        }
+        byID[f.ID] = f
+        byAccountID[f.AccountID] = append(byAccountID[f.AccountID], f)
+    }
+
+    c.byID = byID
+    c.byAccountID = byAccountID
+    c.logger.Printf("foo cache loaded: %d items", len(byID))
+    return nil
+}
+
+func (c *fooCache) getByID(id string) (*models.Foo, bool) {
+    f, ok := c.byID[id]
+    if !ok || f == nil {
+        return nil, false
+    }
+    // Return a copy to prevent mutation
+    fcopy := *f
+    return &fcopy, true
+}
+
+func (c *fooCache) listByAccount(accountID string) []*models.Foo {
+    items := c.byAccountID[accountID]
+    result := make([]*models.Foo, len(items))
+    for i, f := range items {
+        fcopy := *f
+        result[i] = &fcopy
+    }
+    return result
+}
+
+func (c *fooCache) add(f *models.Foo) {
+    fcopy := *f
+    c.byID[f.ID] = &fcopy
+    c.byAccountID[f.AccountID] = append(c.byAccountID[f.AccountID], &fcopy)
+}
+
+func (c *fooCache) update(f *models.Foo) {
+    existing := c.byID[f.ID]
+    if existing == nil {
+        return
+    }
+    existing.Name = f.Name
+    existing.Status = f.Status
+    existing.UpdatedAt = f.UpdatedAt
+}
+
+func (c *fooCache) remove(id string) {
+    f := c.byID[id]
+    if f == nil {
+        return
+    }
+    delete(c.byID, id)
+    // Remove from account index
+    items := c.byAccountID[f.AccountID]
+    for i, item := range items {
+        if item.ID == id {
+            c.byAccountID[f.AccountID] = append(items[:i], items[i+1:]...)
+            break
+        }
+    }
+}
+```
+
+---
+
+## 7. Cross-Instance Cache Invalidation (PostgreSQL NOTIFY)
+
+When running multiple instances of the application, cache updates in one instance must trigger refreshes in others. This is achieved using PostgreSQL's `LISTEN/NOTIFY` mechanism.
+
+### 7.1 Architecture
+
+```
+Instance A (writes)              PostgreSQL                Instance B (reads)
+        │                            │                            │
+        │── INSERT/UPDATE ──────────>│                            │
+        │── NOTIFY channel ─────────>│                            │
+        │                            │── notification ───────────>│
+        │                            │                            │── TriggerRefresh()
+```
+
+### 7.2 Sending Notifications (Ops Thread)
+
+After successful write operations, send a NOTIFY to alert other instances:
+
+```go
+// In {module}svc_ops.go (import "internal/cachenotify")
+
+func notifyRefresh(db *database.PGSQLSvc) {
+    ctx := context.Background()
+    pool, err := db.GetDBInstance(ctx)
+    if err != nil {
+        return
+    }
+    _, _ = pool.Exec(ctx, "NOTIFY "+cachenotify.ChannelFoo)
+}
+
+func (o *FooSvc) opsHandleCreate(req *runMsgReq) {
+    // ... DB write and commit ...
+
+    // Notify OTHER instances first (they'll refresh from DB)
+    notifyRefresh(o.db)
+
+    // Then update local cache (optimization for this instance)
+    rspCh := make(chan *runMsgRsp, 1)
+    o.queryCh <- &runMsgReq{msgType: queryIntCacheAdd, msgData: &foo, rspCh: rspCh}
+    <-rspCh
+
+    req.rspCh <- &runMsgRsp{data: &foo}
+}
+```
+
+### 7.3 Receiving Notifications (Listener)
+
+A dedicated listener runs on a separate DB connection using `internal/cachenotify`:
+
+```go
+// internal/cachenotify/listen.go
+
+// Channel names for PostgreSQL NOTIFY (single source of truth; use in switch in bootstrap).
+const (
+    ChannelTest    = "UPDATE_TEST_TABLE"
+    ChannelAuth    = "UPDATE_AUTH_TABLE"
+    ChannelAccount = "UPDATE_ACCOUNT_TABLE"
+    // Add new channels here: ChannelFoo = "UPDATE_FOO_TABLE"
+)
+
+func Run(ctx context.Context, pgURL string, callback func(channel string), logger *log.Logger) {
+    go run(ctx, pgURL, callback, logger)
+}
+
+func run(ctx context.Context, pgURL string, callback func(channel string), logger *log.Logger) {
+    conn, err := pgx.Connect(ctx, pgURL)
+    if err != nil {
+        return
+    }
+    defer conn.Close(ctx)
+
+    for _, ch := range []string{ChannelTest, ChannelAuth, ChannelAccount} {
+        conn.Exec(ctx, "LISTEN "+ch)
+    }
+
+    for {
+        notification, err := conn.WaitForNotification(ctx)
+        if err != nil {
+            return
+        }
+        callback(notification.Channel)
+    }
+}
+```
+
+Bootstrap (`cmd/main.go`) switches on the channel and calls each service's `TriggerRefresh()`:
+
+```go
+cachenotify.Run(context.Background(), *cfg.PgDB.PgURL, func(channel string) {
+    switch channel {
+    case cachenotify.ChannelAuth:
+        authSvc.TriggerRefresh()
+    case cachenotify.ChannelAccount:
+        accountSvc.TriggerRefresh()
+    case cachenotify.ChannelUser:
+        userSvc.TriggerRefresh()
+    case cachenotify.ChannelRole:
+        roleSvc.TriggerRefresh()
+    case cachenotify.ChannelMember, cachenotify.ChannelInvitation:
+        // No in-memory cache to refresh (read-through DB)
+    }
+}, cacheLogger)
+```
+
+### 7.4 Service TriggerRefresh Method
+
+Each service exposes a `TriggerRefresh()` method called by the listener:
+
+```go
+// In {module}svc.go
+
+// TriggerRefresh reloads cache from DB (e.g. after NOTIFY from another instance).
+func (o *FooSvc) TriggerRefresh() {
+    if o.svcState.Load() != 1 {
+        return
+    }
+    rspCh := make(chan *runMsgRsp, 1)
+    select {
+    case o.queryCh <- &runMsgReq{msgType: queryIntCacheRefresh, rspCh: rspCh}:
+        <-rspCh
+    default:
+        // Channel full, skip (next periodic refresh will catch up)
+    }
+}
+```
+
+### 7.5 Adding a New Notify Channel
+
+When creating a new module that needs cross-instance cache invalidation:
+
+1. Add channel constant in `internal/cachenotify/listen.go`: `ChannelFoo = "UPDATE_FOO_TABLE"` (format: `UPDATE_<NAME>_TABLE`)
+2. Add the constant to the LISTEN slice in `listen.go`
+3. In the module's ops file: call `notifyRefresh()` after each write operation, using `cachenotify.ChannelFoo` in the NOTIFY (e.g. `pool.Exec(ctx, "NOTIFY "+cachenotify.ChannelFoo)`)
+4. In application bootstrap: add a case in the cache-notify callback switch for `cachenotify.ChannelFoo` that calls the service's `TriggerRefresh()`
+
+---
+
+## 8. Handler Implementation (`{module}hdlr/{module}hdlr.go`)
+
+HTTP handlers are thin wrappers that:
+1. Parse request
+2. Extract context (AccountID, UserID)
+3. Call service
+4. Return response
+
+```go
+package foohdlr
+
+import (
+    "encoding/json"
+    "log"
+    "net/http"
+
+    "github.com/go-chi/chi/v5"
+
+    "<PROJECT>/internal/apiserver"
+    "<PROJECT>/internal/middleware"
+    "<PROJECT>/internal/modules/foo/foosvc"
+)
+
+type FooHdlr struct {
+    svc    *foosvc.FooSvc
+    logger *log.Logger
+}
+
+func NewFooHdlr(svc *foosvc.FooSvc, logger *log.Logger) *FooHdlr {
+    return &FooHdlr{svc: svc, logger: logger}
+}
+
+// RegisterRoutes implements apiserver.RouteRegistrar.
+func (h *FooHdlr) RegisterRoutes(r chi.Router) {
+    r.Get("/", h.list)
+    r.Get("/{id}", h.getByID)
+    r.With(middleware.RequirePermission("foo", "create")).Post("/", h.create)
+    r.With(middleware.RequirePermission("foo", "update")).Put("/{id}", h.update)
+    r.With(middleware.RequirePermission("foo", "delete")).Delete("/{id}", h.delete)
+}
+
+// --- List ---
+
+func (h *FooHdlr) list(w http.ResponseWriter, r *http.Request) {
+    accountID := middleware.GetAccountID(r.Context())
+    userID := middleware.GetUserID(r.Context())
+
+    items, err := h.svc.List(&foosvc.ListReq{AccountID: accountID, UserID: userID})
+    if err != nil {
+        h.logger.Printf("list error: %v", err)
+        apiserver.RespondInternalError(w, "Failed to list items")
+        return
+    }
+
+    apiserver.RespondOK(w, items)
+}
+
+// --- GetByID ---
+
+func (h *FooHdlr) getByID(w http.ResponseWriter, r *http.Request) {
+    id := chi.URLParam(r, "id")
+    accountID := middleware.GetAccountID(r.Context())
+    userID := middleware.GetUserID(r.Context())
+
+    item, err := h.svc.GetByID(&foosvc.GetByIDReq{ID: id, AccountID: accountID, UserID: userID})
+    if err != nil {
+        h.logger.Printf("getByID error: %v", err)
+        apiserver.RespondInternalError(w, "Failed to get item")
+        return
+    }
+    if item == nil {
+        apiserver.RespondNotFound(w)
+        return
+    }
+
+    apiserver.RespondOK(w, item)
+}
+
+// --- Create ---
+
+type createReq struct {
+    Name *string `json:"name"`
+}
+
+func (h *FooHdlr) create(w http.ResponseWriter, r *http.Request) {
+    var req createReq
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == nil {
+        apiserver.RespondBadRequest(w, "invalid_body", "name is required")
+        return
+    }
+
+    accountID := middleware.GetAccountID(r.Context())
+    userID := middleware.GetUserID(r.Context())
+
+    item, err := h.svc.CreateFoo(&foosvc.CreateFooReq{
+        Name:      *req.Name,
+        AccountID: accountID,
+        UserID:    userID,
+    })
+    if err != nil {
+        h.logger.Printf("create error: %v", err)
+        apiserver.RespondInternalError(w, "Failed to create item")
+        return
+    }
+
+    apiserver.RespondCreated(w, item)
+}
+
+// --- Update ---
+
+type updateReq struct {
+    Name *string `json:"name"`
+}
+
+func (h *FooHdlr) update(w http.ResponseWriter, r *http.Request) {
+    id := chi.URLParam(r, "id")
+    var req updateReq
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        apiserver.RespondBadRequest(w, "invalid_body", "Invalid request body")
+        return
+    }
+
+    accountID := middleware.GetAccountID(r.Context())
+    userID := middleware.GetUserID(r.Context())
+
+    item, err := h.svc.UpdateFoo(&foosvc.UpdateFooReq{
+        ID:        id,
+        Name:      req.Name,
+        AccountID: accountID,
+        UserID:    userID,
+    })
+    if err != nil {
+        h.logger.Printf("update error: %v", err)
+        apiserver.RespondInternalError(w, "Failed to update item")
+        return
+    }
+
+    apiserver.RespondOK(w, item)
+}
+
+// --- Delete ---
+
+func (h *FooHdlr) delete(w http.ResponseWriter, r *http.Request) {
+    id := chi.URLParam(r, "id")
+    accountID := middleware.GetAccountID(r.Context())
+    userID := middleware.GetUserID(r.Context())
+
+    err := h.svc.DeleteFoo(&foosvc.DeleteFooReq{ID: id, AccountID: accountID, UserID: userID})
+    if err != nil {
+        h.logger.Printf("delete error: %v", err)
+        apiserver.RespondInternalError(w, "Failed to delete item")
+        return
+    }
+
+    apiserver.RespondNoContent(w)
+}
+```
+
+---
+
+## 9. Module Models (`{module}mdl/`)
+
+All models for a module live in `{module}mdl/`. There is NO global `internal/models/` directory.
+
+### Architecture
+
+```
+HTTP Request → {module}_req.go → Handler → Service → {module}.go (entity) → DB
+                                                ↓
+HTTP Response ← {module}_rsp.go ← Handler ← {module}_dto.go (transform)
+```
+
+### 9.1 Database Entity Model (`{module}.go`)
+
+The primary database entity for the module. Used by service layer and cache.
+
+```go
+package foomdl
+
+import (
+    "encoding/json"
+    "time"
+)
+
+// Foo represents the `foos` database table
+type Foo struct {
+    // Primary key
+    ID string `json:"id"`
+
+    // Foreign keys
+    AccountID string  `json:"account_id"`
+    ParentID  *string `json:"parent_id"` // nullable FK uses pointer
+
+    // Data fields
+    Name        string `json:"name"`
+    Description string `json:"description"`
+    Status      string `json:"status"`
+
+    // Timestamps
+    CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
+
+    // Hydrated relations (populated by service, not stored in DB)
+    Children []*Foo `json:"children,omitempty"`
+}
+
+// ToJSON serializes the entity to JSON bytes
+func (f *Foo) ToJSON() ([]byte, error) {
+    return json.Marshal(f)
+}
+
+// FooBar represents the `foo_bars` join table (if needed)
+type FooBar struct {
+    FooID     string    `json:"foo_id"`
+    BarID     string    `json:"bar_id"`
+    CreatedAt time.Time `json:"created_at"`
+}
+
+// ToJSON serializes the entity to JSON bytes
+func (fb *FooBar) ToJSON() ([]byte, error) {
+    return json.Marshal(fb)
+}
+```
+
+**Rules:**
+- One entity file per module named `{module}.go`
+- **Every model MUST have a `ToJSON()` method**
+- Include related join table structs in the same file
+- JSON tags required for cache serialization
+- Use pointers for nullable DB columns (`*string`, `*int`)
+- Use `json:"-"` for sensitive fields (password hashes)
+- Mark hydrated fields with `omitempty` comment
+
+### 9.2 Request Models (`{module}_req.go`)
+
+Define all API input structures. Used by handlers to parse incoming requests.
+
+```go
+package foomdl
+
+import "encoding/json"
+
+// CreateFooReq is the request body for POST /foos
+type CreateFooReq struct {
+    Name        string   `json:"name" validate:"required,min=1,max=255"`
+    Description *string  `json:"description,omitempty"`
+    Tags        []string `json:"tags,omitempty"`
+}
+
+func (r *CreateFooReq) ToJSON() ([]byte, error) {
+    return json.Marshal(r)
+}
+
+// UpdateFooReq is the request body for PUT /foos/{id}
+type UpdateFooReq struct {
+    Name        *string  `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
+    Description *string  `json:"description,omitempty"`
+    Tags        []string `json:"tags,omitempty"`
+}
+
+func (r *UpdateFooReq) ToJSON() ([]byte, error) {
+    return json.Marshal(r)
+}
+
+// ListFoosReq contains query parameters for GET /foos
+type ListFoosReq struct {
+    Limit  int    `json:"limit"`
+    Cursor string `json:"cursor"`
+    Status string `json:"status"`
+    Search string `json:"search"`
+}
+
+func (r *ListFoosReq) ToJSON() ([]byte, error) {
+    return json.Marshal(r)
+}
+```
+
+**Rules:**
+- **Every request model MUST have a `ToJSON()` method**
+- Use pointers for optional fields (`*string`, `*int`)
+- Add validation tags where applicable
+- Include JSON tags for serialization
+- Document the endpoint each request serves
+
+### 9.3 Response Models (`{module}_rsp.go`)
+
+Define all API output structures. Used by handlers to format responses.
+
+```go
+package foomdl
+
+import (
+    "encoding/json"
+    "time"
+)
+
+// FooRsp is the response for a single foo item
+type FooRsp struct {
+    ID          string    `json:"id"`
+    Name        string    `json:"name"`
+    Description string    `json:"description,omitempty"`
+    Status      string    `json:"status"`
+    Tags        []string  `json:"tags,omitempty"`
+    CreatedAt   time.Time `json:"created_at"`
+    UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (r *FooRsp) ToJSON() ([]byte, error) {
+    return json.Marshal(r)
+}
+
+// ListFoosRsp is the response for GET /foos
+type ListFoosRsp struct {
+    Data       []*FooRsp   `json:"data"`
+    Pagination *Pagination `json:"pagination"`
+}
+
+func (r *ListFoosRsp) ToJSON() ([]byte, error) {
+    return json.Marshal(r)
+}
+
+// Pagination contains cursor-based pagination info
+type Pagination struct {
+    NextCursor string `json:"next_cursor,omitempty"`
+    HasMore    bool   `json:"has_more"`
+}
+
+func (p *Pagination) ToJSON() ([]byte, error) {
+    return json.Marshal(p)
+}
+```
+
+**Rules:**
+- **Every response model MUST have a `ToJSON()` method**
+- Response models may differ from entity models (hide internal fields)
+- Use `omitempty` for optional fields
+- Include pagination wrapper for list endpoints
+- Never expose sensitive fields (password hashes, internal IDs)
+
+### 9.4 Data Transformation Objects (`{module}_dto.go`)
+
+Define transformation functions between entity, request, and response models.
+
+```go
+package foomdl
+
+// --- Transformation Functions ---
+
+// ToFooRsp converts entity to API response
+func ToFooRsp(f *Foo) *FooRsp {
+    if f == nil {
+        return nil
+    }
+    return &FooRsp{
+        ID:          f.ID,
+        Name:        f.Name,
+        Description: f.Description,
+        Status:      f.Status,
+        CreatedAt:   f.CreatedAt,
+        UpdatedAt:   f.UpdatedAt,
+    }
+}
+
+// ToFooRspList converts slice of entities to API response list
+func ToFooRspList(items []*Foo) []*FooRsp {
+    result := make([]*FooRsp, len(items))
+    for i, f := range items {
+        result[i] = ToFooRsp(f)
+    }
+    return result
+}
+
+// --- Helper Functions ---
+
+func PtrToStr(p *string) string {
+    if p == nil {
+        return ""
+    }
+    return *p
+}
+
+func StrToPtr(s string) *string {
+    if s == "" {
+        return nil
+    }
+    return &s
+}
+```
+
+**Rules:**
+- DTO file contains transformation functions between layers
+- `To{X}Rsp` - converts entity to response
+- `To{X}RspList` - converts slice of entities to response list
+- Include helper functions for pointer conversions
+- Keep transformation logic centralized here, not scattered in handlers
+
+### 9.4 When to Use Module Models vs Global Models
+
+| Location | Use Case |
+|----------|----------|
+| File | Purpose |
+|------|---------|
+| `{module}.go` | Database entity model |
+| `{module}_req.go` | API request models |
+| `{module}_rsp.go` | API response models |
+| `{module}_dto.go` | Transformation functions |
+
+### 9.5 Cross-Module Model References
+
+When one module needs to reference another module's entity:
+
+```go
+package usermdl
+
+import (
+    "<PROJECT>/internal/modules/role/rolemdl"
+)
+
+type User struct {
+    ID     string        `json:"id"`
+    Email  string        `json:"email"`
+    // Reference to another module's entity
+    Role   *rolemdl.Role `json:"role,omitempty"`
+}
+```
+
+**Rules:**
+- Import the other module's `mdl` package
+- Use fully qualified type (e.g., `rolemdl.Role`)
+- Avoid circular imports by keeping dependencies unidirectional
+
+### 9.6 Complete Module Models Example
+
+```
+internal/modules/user/usermdl/
+├── user.go          # User, AccountUser, FleetScope entities
+├── user_req.go      # CreateUserReq, UpdateUserReq, ListUsersReq
+├── user_rsp.go      # UserRsp, ListUsersRsp
+└── user_dto.go      # ToUserRsp(), ToUserRspList()
+```
+
+**user.go:**
+```go
+package usermdl
+
+import "time"
+
+type User struct {
+    ID           string       `json:"id"`
+    Email        string       `json:"email"`
+    PasswordHash string       `json:"-"`
+    FullName     string       `json:"full_name"`
+    Status       string       `json:"status"`
+    CreatedAt    time.Time    `json:"created_at"`
+    UpdatedAt    time.Time    `json:"updated_at"`
+    
+    // Hydrated
+    Role        *Role        `json:"role,omitempty"`
+    FleetScopes []FleetScope `json:"fleet_scopes,omitempty"`
+    IsActive    bool         `json:"is_active,omitempty"`
+    JoinedAt    time.Time    `json:"joined_at,omitempty"`
+}
+
+type AccountUser struct {
+    AccountID string    `json:"account_id"`
+    UserID    string    `json:"user_id"`
+    RoleID    string    `json:"role_id"`
+    IsActive  bool      `json:"is_active"`
+    JoinedAt  time.Time `json:"joined_at"`
+}
+
+type FleetScope struct {
+    FleetID   string `json:"fleet_id"`
+    FleetName string `json:"fleet_name"`
+}
+```
+
+---
+
+## 10. Database Interaction Rules
+
+- **Use `pgx`**: We use `github.com/jackc/pgx/v5`
+- **Transaction Mode**: DB is accessed via PgBouncer in transaction mode
+  - Do NOT use prepared statements unless necessary
+  - Keep transactions short
+- **Session Context**: Always set RLS context before queries
+  ```go
+  tx.Exec(ctx, "SELECT set_session_context($1, $2)", accountID, userID)
+  ```
+- **Schema**: Modifying schema requires updating `resources/db/schema.sql` and `docs/SCHEMA_DOC.md`
+
+---
+
+## 11. Naming Conventions
+
+| Component       | Pattern                           | Example                      |
+|-----------------|-----------------------------------|------------------------------|
+| Service         | `internal/modules/foo/foosvc`     | `foosvc.FooSvc`              |
+| Handler         | `internal/modules/foo/foohdlr`    | `foohdlr.FooHdlr`            |
+| Models Package  | `internal/modules/foo/foomdl`     | `foomdl.Foo`                 |
+| Entity Model    | `{Entity}`                        | `Foo`, `User`, `Account`     |
+| Entity File     | `{module}.go`                     | `foo.go`, `user.go`          |
+| Request Model   | `{Action}{Entity}Req`             | `CreateFooReq`, `ListFoosReq`|
+| Request File    | `{module}_req.go`                 | `foo_req.go`                 |
+| Response Model  | `{Entity}Rsp`, `List{Entity}sRsp` | `FooRsp`, `ListFoosRsp`      |
+| Response File   | `{module}_rsp.go`                 | `foo_rsp.go`                 |
+| Transformer     | `To{Target}`                      | `ToFooRsp`, `ToFooRspList`   |
+| DTO File        | `{module}_dto.go`                 | `foo_dto.go`                 |
+| Constructor     | `NewFooSvc`, `NewFooHdlr`         |                              |
+| Methods         | verb-noun style                   | `CreateFoo`, `GetByID`       |
+| Cache           | `{module}Cache`                   | `fooCache`                   |
+
+---
+
+## 12. Error Handling
+
+- **Wrap Errors**: Use `fmt.Errorf("context: %w", err)`
+- **HTTP Error Mapping**:
+  - Not Found → 404
+  - Validation → 400
+  - Internal → 500
+
+---
+
+## 13. Logging
+
+- **Use `pkg/logger`**: Do not use standard `log` package for application logging
+- **Structured**: Pass context where possible
+- **Log Points**:
+  - Service start/stop
+  - Cache load/refresh
+  - Successful operations (create, update, delete)
+  - Errors
+
+---
+
+## 14. Performance Considerations
+
+- **Write-Through Cache**: Always update cache BEFORE responding to client (synchronous).
+- **Cache Update Order (CRITICAL)**: Notify OTHER instances FIRST, then update local cache. This ensures:
+  - Other instances refresh from DB (source of truth)
+  - Local instance gets optimized update
+  - If local update fails, periodic refresh will catch up
+- **Channel Buffer Sizes**: Configure via `cfg.Cache.OpsChSize` and `cfg.Cache.QueryChSize` based on expected load.
+- **Channel Buffer Sizes**: Configure via `cfg.Cache.OpsChSize` and `cfg.Cache.QueryChSize` based on expected load.
+- **Periodic Refresh**: Set `cfg.Cache.SyncIntervalSecs` based on data freshness requirements (lower = more CPU, more consistent).
+- **Cache Memory**: Each in-memory cache holds full dataset. Monitor memory usage for large tables.
+- **Avoid Allocations**: Cache `getByID` returns copies to prevent mutation. Reuse buffers where possible.
+- **Batch NOTIFY**: For bulk operations, consider batching notifications to reduce cross-instance chatter.
+- **Query Channel Full**: If `TriggerRefresh()` channel is full, it uses `default` case to skip (next periodic refresh catches up).
+
+---
+
+## 15. AI Agent Mental Model
+
+When asked to "fix a bug" or "add a feature":
+
+1. **Identify the Layer**: Is it a data issue (DB), logic issue (Service), or parsing issue (Handler)?
+2. **Follow the Data Flow**: Handler → Channel → Service Goroutine → DB/Cache → Channel → Handler
+3. **Respect the Concurrency**: Do not introduce race conditions by accessing the cache outside the `queryRunThread`
+
+---
+
+## 16. Module Creation Checklist
+
+When creating a new module:
+
+- [ ] Create directory structure:
+  - [ ] `internal/modules/{module}/{module}mdl/` - all models
+  - [ ] `internal/modules/{module}/{module}svc/` - service layer
+  - [ ] `internal/modules/{module}/{module}hdlr/` - HTTP handlers
+- [ ] Define all models in `{module}mdl/`:
+  - [ ] `{module}.go` - database entity model
+  - [ ] `{module}_req.go` - request models (API input)
+  - [ ] `{module}_rsp.go` - response models (API output)
+  - [ ] `{module}_dto.go` - transformation functions
+- [ ] Implement service with channel pattern:
+  - [ ] `{module}svc.go` - struct, lifecycle, public API, `TriggerRefresh()` method
+  - [ ] `{module}svc_ops.go` - write operations with `notifyRefresh()` calls
+  - [ ] `{module}svc_query.go` - read operations with cache preload on startup
+  - [ ] `{module}_cache.go` - cache implementation with `loadFromDB()` method
+- [ ] Ensure cache preloads from DB before query thread processes requests
+- [ ] If multi-instance cache sync needed:
+  - [ ] Add channel in `internal/cachenotify/listen.go` (e.g. `ChannelFoo = "UPDATE_FOO_TABLE"`)
+  - [ ] Call `notifyRefresh()` after write operations (use `cachenotify.ChannelFoo` for NOTIFY)
+  - [ ] Wire callback case to service's `TriggerRefresh()` in bootstrap
+- [ ] Implement handler with route registration
+- [ ] Add schema to `resources/db/schema.sql`
+- [ ] Update `docs/SCHEMA_DOC.md`
+- [ ] Register routes in main router
+- [ ] Start service in application bootstrap
+- [ ] Add Swagger comments to each handler and run `go generate ./cmd` (see §18)
+
+---
+
+## 17. Verification Checklist
+
+Before completing any task:
+
+- [ ] Did I use the channel pattern for state access?
+- [ ] Did I avoid mutexes in the service?
+- [ ] Did I place code in the correct module structure?
+- [ ] Did I place ALL models in `{module}mdl/` (entity, req, rsp, dto)?
+- [ ] Did I add `ToJSON()` method to every model struct?
+- [ ] Did I create transformation functions in `{module}_dto.go`?
+- [ ] Did I update the entity model if the DB schema changed?
+- [ ] Did I follow write-first caching (DB → cache update via channel)?
+- [ ] Did I preload cache from DB before processing requests in `queryRunThread()`?
+- [ ] Did I implement retry loop for initial cache load?
+- [ ] Did I return copies from cache to prevent mutation?
+- [ ] Did I set session context for RLS in DB operations?
+- [ ] Did I call `notifyRefresh()` after write operations (for multi-instance sync)?
+- [ ] Did I implement `TriggerRefresh()` method for external cache invalidation?
+- [ ] Did I use proper error wrapping?
+- [ ] Did I add appropriate logging?
+- [ ] Did I add/update Swagger comments for new or changed endpoints and regenerate `docs/`? (§18)
+
+---
+
+## 18. API Documentation (Swagger)
+
+The API is documented with **Swagger (OpenAPI 2.0)** via [swaggo/swag](https://github.com/swaggo/swag). The Swagger UI is served at `/swagger/` and lists all endpoints with request/response schemas.
+
+### 18.1 Where Swagger Lives
+
+| Item | Location |
+|------|----------|
+| API spec (generated) | `docs/docs.go`, `docs/swagger.json`, `docs/swagger.yaml` |
+| General API info | `cmd/main.go` (comment block: `@title`, `@version`, `@host`, `@schemes`, `@BasePath`, `@securityDefinitions`) |
+| Per-endpoint docs | Handler file that defines the route (e.g. `{module}hdlr/{module}hdlr.go`) |
+| UI mount | `cmd/main.go`: `r.Mount("/swagger", httpSwagger.WrapHandler)` |
+
+### 18.2 Documenting the API in Code
+
+**Main application (cmd/main.go):** Define global API info and (optionally) health/system routes:
+
+```go
+//go:generate swag init -g main.go -o ../docs --parseDependency --parseInternal
+
+// @title           WTTemplate API
+// @version         1.0
+// @description     Short description of the API.
+// @BasePath        /
+// @host            localhost:8080
+// @schemes         http
+// @securityDefinitions.apikey  BearerAuth
+// @in                            header
+// @name                          Authorization
+package main
+```
+
+**Handlers:** Add swag comments **above** each handler function. Use the **full path** (including `/api/v1/...`) in `@Router`. Reference request/response types from the **module’s mdl package** (e.g. `authmdl.LoginReq`, `authmdl.LoginRsp`).
+
+```go
+// login authenticates user and returns token and user.
+// @Summary  Login
+// @Tags     auth
+// @Accept   json
+// @Produce  json
+// @Param    body  body  authmdl.LoginReq  true  "Credentials"
+// @Success  200   {object}  authmdl.LoginRsp
+// @Router   /api/v1/auth/login [post]
+func (h *AuthHdlr) login(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+
+// me returns the current user (requires JWT).
+// @Summary  Current user
+// @Tags     auth
+// @Produce  json
+// @Security BearerAuth
+// @Success  200  {object}  authmdl.MeRsp
+// @Router   /api/v1/auth/me [get]
+func (h *AuthHdlr) me(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+**Rules:**
+- Every public API endpoint MUST have a swag block: `@Summary`, `@Tags`, `@Router` at minimum.
+- Use `@Param` for body/query/path; use `@Success`/`@Failure` with `{object} pkg.Type` for schemas.
+- For JWT-protected routes add `@Security BearerAuth`.
+- Keep `@Router` in sync with the actual route (e.g. `/api/v1/auth/login [post]`).
+
+### 18.3 Regenerating Swagger Docs
+
+After changing `@` comments in `cmd/main.go` or any handler:
+
+```bash
+# From repo root (requires swag on PATH)
+go generate ./cmd
+```
+
+Or install and run swag explicitly:
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+swag init -g cmd/main.go -o docs --parseDependency --parseInternal
+```
+
+The generated `docs/` package is imported in `cmd/main.go` via `_ "github.com/albinzr/WTTemplate/docs"` so the spec is embedded at runtime.
+
+### 18.4 Viewing and Using the API List
+
+- **URL:** After starting the server, open `http://localhost:<port>/swagger/` (port from config `apiserver.port`).
+- **Server URL in UI:** The `@host` and `@schemes` in the main block set the default server in Swagger UI (e.g. `http://localhost:8080`). “Try it out” uses this base URL.
+- **Auth:** For endpoints with `@Security BearerAuth`, use the “Authorize” button and set the JWT (e.g. `Bearer <token>`).
+
+### 18.5 Checklist for New or Changed Endpoints
+
+- [ ] Added/updated swag comment block above the handler (Summary, Tags, Router, Param/Success where needed).
+- [ ] Used full path in `@Router` (e.g. `/api/v1/auth/login [post]`).
+- [ ] Referenced mdl types in `@Param`/`@Success`/`@Failure` (e.g. `authmdl.LoginReq`).
+- [ ] Added `@Security BearerAuth` for JWT-protected routes.
+- [ ] Ran `go generate ./cmd` and committed updated `docs/`.

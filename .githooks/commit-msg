@@ -1,0 +1,14 @@
+#!/bin/sh
+# Conventional Commits: type(scope): subject [E4-S2]   (docs/git.md)
+first=$(head -n1 "$1")
+case "$first" in Merge*|Revert*|fixup!*|squash!*) exit 0 ;; esac
+pattern='^(feat|fix|perf|refactor|test|docs|chore|ci|build)(\([a-z0-9-]+\))?!?: .{3,}$'
+if ! printf '%s' "$first" | grep -Eq "$pattern"; then
+  echo "✋ Commit message must look like: feat(tasks): add list view [E4-S2]"
+  echo "   Types: feat fix perf refactor test docs chore ci build"
+  exit 1
+fi
+case "$first" in
+  feat*|fix*|perf*) printf '%s' "$first" | grep -Eq '\[E[0-9]+-S[0-9]+\]' ||
+    echo "ℹ️  Tip: cite the ticket, e.g. [E4-S2]" ;;
+esac

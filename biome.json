@@ -1,0 +1,123 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!apps/api",
+      "!.claude",
+      "!.cursor",
+      "!packages/ui-kit/src/styles/tokens.css"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "noDefaultExport": "error",
+        "useImportType": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error"
+      }
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "**/*.config.ts",
+        "**/vite.config.ts",
+        "playwright.config.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "apps/web/src/**",
+        "packages/ui-kit/src/**",
+        "packages/bridge/src/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@app/query": "React/main thread must not use the query engine. Use @app/bridge (ADR-0005).",
+                  "@app/api-client": "Network calls belong in the worker. Use @app/bridge (ADR-0005).",
+                  "@app/domain": "Domain logic runs in the worker. Use @app/bridge view models (ADR-0005)."
+                }
+              }
+            },
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "fetch": "Network calls belong in the worker (ADR-0005).",
+                  "XMLHttpRequest": "Network calls belong in the worker (ADR-0005).",
+                  "WebSocket": "Network calls belong in the worker (ADR-0005).",
+                  "EventSource": "Network calls belong in the worker (ADR-0005)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.module.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
+    }
+  ]
+}

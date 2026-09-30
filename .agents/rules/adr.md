@@ -1,0 +1,11 @@
+---
+description: When to write an ADR.
+---
+Write or supersede an ADR in `ADR/` (template `ADR/0000-template.md`) before implementing any of the following:
+- a new dependency
+- a boundary or protocol change
+- a data-model or API-contract change of significance
+- a security-relevant choice
+- reversing an existing ADR
+
+Cite the ADR in the PR, and in `docs/conversation/` when a discussion drove the change.

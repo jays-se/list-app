@@ -1,0 +1,116 @@
+.page {
+  display: grid;
+  gap: var(--spacingXXXL);
+}
+
+.title {
+  margin: 0 0 var(--spacingS);
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.lead {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}
+
+.section {
+  display: grid;
+  gap: var(--spacingL);
+}
+
+.heading {
+  margin: 0;
+  padding-bottom: var(--spacingS);
+  border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  font-size: var(--fontSizeBase600);
+  line-height: var(--lineHeightBase600);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.specimen {
+  display: grid;
+  gap: var(--spacingM);
+  padding: var(--spacingL);
+  border-radius: var(--borderRadiusXLarge);
+  background: var(--colorNeutralBackground1);
+  box-shadow: var(--shadow2);
+}
+
+.specimenTitle {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase300);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacingM);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacingL);
+}
+
+.stack {
+  display: grid;
+  gap: var(--spacingS);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacingS);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swatch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingS);
+  font-size: var(--fontSizeBase200);
+}
+
+.chip {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+
+.sample {
+  margin: 0;
+}
+
+.spaceRow {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  font-size: var(--fontSizeBase200);
+}
+
+.bar {
+  height: 12px;
+  background: var(--colorBrandBackground);
+}
+
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 64px;
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground1);
+  font-size: var(--fontSizeBase100);
+}

@@ -1,0 +1,13 @@
+---
+description: React/UI rules for apps/web and ui-kit.
+globs: apps/web/**/*.ts,apps/web/**/*.tsx,packages/ui-kit/**/*.ts,packages/ui-kit/**/*.tsx
+alwaysApply: false
+---
+<!-- GENERATED from .agents/rules/react-render-only.md by scripts/sync-agents.mjs. Do not edit. -->
+- React state is for ephemeral UI only: open/closed, focus and input drafts.
+- Filter intent lives in URL search params (react-router). Pass them as `useView` params.
+- Route loaders may only call `bridge.prefetch(...)`.
+- No sorting, filtering, grouping, counting or date math in components. Ask the worker view model for display-ready fields.
+- Style with CSS Modules and tokens, with both light and dark themes. Use semantic, keyboard-accessible markup.
+- The reference app (list.intellicar.app) is a functional reference only. Never copy its layout or visuals.
+- Build from `@app/ui-kit` primitives and alias tokens only (ADR-0014, Fluent 2–inspired). Hard-coded colours, spacing and shadows are not allowed, and so are `@fluentui/*` imports.

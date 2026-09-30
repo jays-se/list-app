@@ -1,0 +1,19 @@
+#!/bin/sh
+# Blocks commits on main and runs fast checks on what's staged.
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$branch" = "main" ]; then
+  echo "✋ Don't commit to main. Create a branch: feat/<ticket-id>-<slug> (docs/git.md)."
+  exit 1
+fi
+set -e
+pnpm exec biome check --staged --no-errors-on-unmatched
+node scripts/sync-agents.mjs --check
+node scripts/check-boundaries.mjs
+node packages/ui-kit/scripts/build-tokens.ts --check
+go_files=$(git diff --cached --name-only --diff-filter=ACM -- 'apps/api/*.go' 'apps/api/**/*.go')
+if [ -n "$go_files" ]; then
+  unformatted=$(cd apps/api && gofmt -l .)
+  if [ -n "$unformatted" ]; then
+    echo "gofmt needed:"; echo "$unformatted"; exit 1
+  fi
+fi

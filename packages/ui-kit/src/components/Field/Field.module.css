@@ -1,0 +1,47 @@
+.root {
+  display: grid;
+  align-content: start;
+  gap: var(--spacingXXS);
+}
+.vertical {
+  grid-template-columns: minmax(0, 1fr);
+}
+.horizontal {
+  grid-template-columns: 33% minmax(0, 1fr);
+  column-gap: var(--spacingM);
+  align-items: baseline;
+}
+.horizontal > :not(.label) {
+  grid-column: 2;
+}
+
+.label {
+  color: var(--colorNeutralForeground1);
+  font-size: var(--fontSizeBase300);
+  font-weight: var(--fontWeightSemibold);
+  line-height: var(--lineHeightBase300);
+}
+.required {
+  color: var(--colorStatusDangerForeground1);
+}
+
+.hint,
+.message {
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+.hint {
+  color: var(--colorNeutralForeground3);
+}
+.error {
+  color: var(--colorStatusDangerForeground1);
+}
+.warning {
+  color: var(--colorStatusWarningForeground1);
+}
+.success {
+  color: var(--colorStatusSuccessForeground1);
+}
+.none {
+  color: var(--colorNeutralForeground3);
+}

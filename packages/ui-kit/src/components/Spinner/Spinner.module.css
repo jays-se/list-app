@@ -1,0 +1,39 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingS);
+}
+
+.ring {
+  animation: spin 1.2s linear infinite;
+}
+
+.track,
+.tail {
+  fill: none;
+  stroke-width: 2.5;
+}
+.track {
+  stroke: var(--colorBrandBackground2);
+}
+.tail {
+  stroke: var(--colorBrandStroke1);
+  stroke-linecap: round;
+  stroke-dasharray: 20 43;
+}
+
+.label {
+  color: var(--colorNeutralForeground2);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation-duration: 3s;
+  }
+}

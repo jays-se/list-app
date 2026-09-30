@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
+  },
+  "include": [
+    "packages/protocol/src",
+    "packages/bridge/src",
+    "packages/ui-kit/src",
+    "apps/web/src"
+  ]
+}

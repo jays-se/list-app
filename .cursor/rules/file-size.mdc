@@ -1,0 +1,9 @@
+---
+description: Split modules over 500 lines. (Reused from demo-ui/.cursor/rules/frontend.mdc)
+alwaysApply: true
+---
+<!-- GENERATED from .agents/rules/file-size.md by scripts/sync-agents.mjs. Do not edit. -->
+
+## File size
+
+No component or module file may exceed **500 lines**. Split into a folder of modules when it would exceed that.

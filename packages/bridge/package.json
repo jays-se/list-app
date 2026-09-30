@@ -1,0 +1,19 @@
+{
+  "name": "@app/bridge",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@app/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@app/worker": "workspace:*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
+  }
+}

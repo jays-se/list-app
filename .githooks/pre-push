@@ -1,0 +1,8 @@
+#!/bin/sh
+# Blocks direct pushes to main; open a PR instead.
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "✋ Don't push to main. Open a pull request."
+    exit 1
+  fi
+done

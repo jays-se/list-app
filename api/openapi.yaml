@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  title: List API
+  version: 0.1.0
+  description: |
+    Contract-first API (ADR-0002). This file is the source of truth: change it
+    before changing handlers or client code. CI rejects breaking changes.
+    All errors are RFC 7807 `application/problem+json`.
+servers:
+  - url: /
+tags:
+  - name: system
+    description: Liveness, readiness and service identity.
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Liveness probe
+      description: 200 while the process is serving HTTP. Never checks dependencies.
+      responses:
+        "200":
+          description: Alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      tags: [system]
+      operationId: getReadiness
+      summary: Readiness probe
+      description: 200 when every dependency check passes, otherwise 503.
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+  /api/v1/system/info:
+    get:
+      tags: [system]
+      operationId: getSystemInfo
+      summary: Service identity
+      responses:
+        "200":
+          description: Service name, version and start time
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemInfo"
+        default:
+          $ref: "#/components/responses/Problem"
+components:
+  responses:
+    Problem:
+      description: Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    Readiness:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            description: '"ok", "not_configured", or an error summary'
+    SystemInfo:
+      type: object
+      required: [service, version, startedAt]
+      properties:
+        service:
+          type: string
+          example: list-api
+        version:
+          type: string
+          example: 0.1.0
+        startedAt:
+          type: string
+          format: date-time
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    Problem:
+      type: object
+      description: RFC 7807 problem details.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: Machine-readable problem type, e.g. "not_found", "validation".
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        requestId:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"

@@ -1,0 +1,90 @@
+.root {
+  --badge-fg: var(--colorBrandForeground1);
+  --badge-bg: var(--colorBrandBackground2);
+  --badge-border: var(--colorBrandStroke1);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingXXS);
+  border: var(--strokeWidthThin) solid transparent;
+  font-weight: var(--fontWeightSemibold);
+  white-space: nowrap;
+}
+
+.brand {
+  --badge-fg: var(--colorBrandForeground1);
+  --badge-bg: var(--colorBrandBackground2);
+  --badge-border: var(--colorBrandStroke1);
+  --badge-solid: var(--colorBrandBackground);
+}
+.danger {
+  --badge-fg: var(--colorStatusDangerForeground1);
+  --badge-bg: var(--colorStatusDangerBackground1);
+  --badge-border: var(--colorStatusDangerBorder1);
+  --badge-solid: var(--colorStatusDangerBackground3);
+}
+.warning {
+  --badge-fg: var(--colorStatusWarningForeground1);
+  --badge-bg: var(--colorStatusWarningBackground1);
+  --badge-border: var(--colorStatusWarningBorder1);
+  --badge-solid: var(--colorStatusWarningBackground3);
+}
+.success {
+  --badge-fg: var(--colorStatusSuccessForeground1);
+  --badge-bg: var(--colorStatusSuccessBackground1);
+  --badge-border: var(--colorStatusSuccessBorder1);
+  --badge-solid: var(--colorStatusSuccessBackground3);
+}
+.informative {
+  --badge-fg: var(--colorStatusInfoForeground1);
+  --badge-bg: var(--colorStatusInfoBackground1);
+  --badge-border: var(--colorStatusInfoBorder1);
+  --badge-solid: var(--colorStatusInfoBackground3);
+}
+.subtle {
+  --badge-fg: var(--colorNeutralForeground2);
+  --badge-bg: var(--colorNeutralBackground3);
+  --badge-border: var(--colorNeutralStroke1);
+  --badge-solid: var(--colorNeutralBackgroundStrong);
+}
+
+.tint {
+  border-color: var(--badge-bg);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+}
+.outline {
+  border-color: var(--badge-border);
+  background: transparent;
+  color: var(--badge-fg);
+}
+.filled {
+  border-color: var(--badge-solid);
+  background: var(--badge-solid);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+
+.small {
+  min-height: 16px;
+  padding: 0 var(--spacingXS);
+  font-size: var(--fontSizeBase100);
+  line-height: var(--lineHeightBase100);
+}
+.medium {
+  min-height: 20px;
+  padding: 0 var(--spacingSNudge);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+.large {
+  min-height: 24px;
+  padding: 0 var(--spacingS);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+.rounded {
+  border-radius: var(--borderRadiusMedium);
+}
+.circular {
+  border-radius: var(--borderRadiusCircular);
+}

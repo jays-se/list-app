@@ -1,0 +1,19 @@
+{
+  "name": "@app/ui-kit",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles/index.css"
+  },
+  "devDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
+}

@@ -1,0 +1,56 @@
+.shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: auto auto 1fr;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingXL);
+  min-height: 48px;
+  padding: 0 var(--spacingL);
+  border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground1);
+}
+
+.brand {
+  color: var(--colorNeutralForeground1);
+  font-size: var(--fontSizeBase400);
+  font-weight: var(--fontWeightBold);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  flex: 1;
+  gap: var(--spacingXS);
+}
+
+.navLink {
+  padding: var(--spacingXS) var(--spacingS);
+  border-radius: var(--borderRadiusMedium);
+  color: var(--colorNeutralForeground2);
+  text-decoration: none;
+}
+.navLink:hover {
+  background: var(--colorSubtleBackgroundHover);
+  color: var(--colorNeutralForeground1);
+}
+.active {
+  color: var(--colorBrandForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.banner {
+  padding: var(--spacingS) var(--spacingL);
+  background: var(--colorStatusWarningBackground1);
+  color: var(--colorStatusWarningForeground1);
+}
+
+.main {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--spacingXXL) var(--spacingL);
+}

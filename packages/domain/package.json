@@ -1,0 +1,13 @@
+{
+  "name": "@app/domain",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@app/protocol": "workspace:*",
+    "@app/query": "workspace:*",
+    "@app/api-client": "workspace:*"
+  }
+}

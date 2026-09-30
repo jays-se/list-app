@@ -1,0 +1,142 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacingSNudge);
+  margin: 0;
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+  font-family: var(--fontFamilyBase);
+  font-weight: var(--fontWeightSemibold);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background var(--durationFaster) var(--curveEasyEase),
+    border-color var(--durationFaster) var(--curveEasyEase),
+    color var(--durationFaster) var(--curveEasyEase);
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* Sizes */
+.small {
+  min-width: 64px;
+  min-height: 24px;
+  padding: 0 var(--spacingS);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+.medium {
+  min-width: 96px;
+  min-height: 32px;
+  padding: 0 var(--spacingM);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+}
+.large {
+  min-width: 96px;
+  min-height: 40px;
+  padding: 0 var(--spacingL);
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+}
+
+/* Shapes */
+.rounded {
+  border-radius: var(--borderRadiusMedium);
+}
+.circular {
+  border-radius: var(--borderRadiusCircular);
+}
+.square {
+  border-radius: var(--borderRadiusNone);
+}
+
+.iconOnly {
+  min-width: 0;
+  padding: 0;
+}
+.iconOnly.small {
+  width: 24px;
+}
+.iconOnly.medium {
+  width: 32px;
+}
+.iconOnly.large {
+  width: 40px;
+}
+
+/* Appearances */
+.secondary:hover {
+  background: var(--colorNeutralBackground1Hover);
+  border-color: var(--colorNeutralStroke1Hover);
+}
+.secondary:active {
+  background: var(--colorNeutralBackground1Pressed);
+}
+
+.primary {
+  border-color: transparent;
+  background: var(--colorBrandBackground);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+.primary:hover {
+  background: var(--colorBrandBackgroundHover);
+}
+.primary:active {
+  background: var(--colorBrandBackgroundPressed);
+}
+
+.subtle {
+  border-color: transparent;
+  background: transparent;
+  color: var(--colorNeutralForeground2);
+}
+.subtle:hover {
+  background: var(--colorSubtleBackgroundHover);
+  color: var(--colorNeutralForeground1);
+}
+.subtle:active {
+  background: var(--colorSubtleBackgroundPressed);
+}
+
+.transparent {
+  border-color: transparent;
+  background: transparent;
+  color: var(--colorNeutralForeground2);
+}
+.transparent:hover {
+  color: var(--colorBrandForeground1);
+}
+
+.root:disabled,
+.root[aria-disabled="true"] {
+  border-color: var(--colorNeutralStrokeDisabled);
+  background: var(--colorNeutralBackgroundDisabled);
+  color: var(--colorNeutralForegroundDisabled);
+  cursor: not-allowed;
+}
+.subtle:disabled,
+.transparent:disabled {
+  border-color: transparent;
+  background: transparent;
+}
+
+@media (forced-colors: active) {
+  .root {
+    border-color: ButtonText;
+  }
+  .primary {
+    background: Highlight;
+    color: HighlightText;
+  }
+  .root:disabled {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}

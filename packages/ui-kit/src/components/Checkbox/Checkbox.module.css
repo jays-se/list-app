@@ -1,0 +1,74 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingS);
+  color: var(--colorNeutralForeground1);
+}
+
+/* The real input covers the indicator so clicks, focus and AT work natively. */
+.input {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 16px;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.large .input {
+  width: 20px;
+}
+
+.indicator {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: var(--strokeWidthThin) solid var(--colorNeutralStrokeAccessible);
+  border-radius: var(--borderRadiusSmall);
+  background: var(--colorNeutralBackground1);
+  color: transparent;
+  pointer-events: none;
+}
+.large .indicator {
+  width: 20px;
+  height: 20px;
+}
+
+.input:checked + .indicator {
+  border-color: var(--colorBrandBackground);
+  background: var(--colorBrandBackground);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+.input:hover:not(:checked) + .indicator {
+  border-color: var(--colorNeutralForeground2);
+}
+.input:focus-visible + .indicator {
+  outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+  outline-offset: 2px;
+}
+.input:disabled + .indicator {
+  border-color: var(--colorNeutralStrokeDisabled);
+  background: var(--colorNeutralBackgroundDisabled);
+}
+.input:disabled:checked + .indicator {
+  color: var(--colorNeutralForegroundDisabled);
+}
+.input:disabled ~ .label {
+  color: var(--colorNeutralForegroundDisabled);
+}
+
+.label {
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (forced-colors: active) {
+  .input:checked + .indicator {
+    background: Highlight;
+    color: HighlightText;
+  }
+}

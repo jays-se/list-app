@@ -1,0 +1,7 @@
+---
+description: Package boundaries and the render-only React rule.
+---
+Read `AGENTS.md` (Hard rules) and `docs/architecture.md` (Packages table) before changing code.
+- `apps/web` renders only: no fetch/XHR/WebSocket/EventSource, and no imports of `@app/query`, `@app/api-client`, `@app/domain` or `@app/worker`.
+- Data reaches React only through `@app/bridge` (`useView`, `useAction`).
+- A new runtime dependency needs an ADR (ADR-0012).

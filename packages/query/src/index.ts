@@ -1,0 +1,5 @@
+export { QueryClient } from "./client.ts"
+export { hashKey, matchKey } from "./key.ts"
+export type { Query } from "./query.ts"
+export { abortError, defaultIsRetryable, isAbortError } from "./retry.ts"
+export type * from "./types.ts"

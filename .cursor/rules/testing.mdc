@@ -1,0 +1,6 @@
+---
+description: Testing expectations.
+alwaysApply: true
+---
+<!-- GENERATED from .agents/rules/testing.md by scripts/sync-agents.mjs. Do not edit. -->
+Follow `docs/testing.md`. Every change ships with tests at the right layer. Use fake timers instead of sleeps. Mock HTTP only at `@app/api-client`. A ticket is done only per `docs/definition-of-done.md`.

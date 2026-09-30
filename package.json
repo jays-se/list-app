@@ -1,0 +1,43 @@
+{
+  "name": "list-app",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @app/web dev",
+    "build": "pnpm --filter @app/web build",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "tsc -p tsconfig.worker.json && tsc -p tsconfig.main.json && tsc -p tsconfig.tools.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "tokens": "node packages/ui-kit/scripts/build-tokens.ts",
+    "check:tokens": "node packages/ui-kit/scripts/build-tokens.ts --check",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:agents": "node scripts/sync-agents.mjs --check",
+    "sync:agents": "node scripts/sync-agents.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm check:agents && pnpm check:tokens && pnpm test",
+    "prepare": "git config core.hooksPath .githooks || true"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@biomejs/biome": "^2.5.14",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.2",
+    "jsdom": "^30.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
