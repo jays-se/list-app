@@ -16,6 +16,19 @@ self.addEventListener("message", (event: MessageEvent<unknown>) => {
   kernel.handle(event.data)
 })
 
+const describe = (e: unknown) =>
+  e instanceof Error
+    ? { message: e.message || e.name, ...(e.stack ? { stack: e.stack } : {}) }
+    : { message: String(e) }
+
 self.addEventListener("unhandledrejection", (event) => {
   console.error("[worker] unhandled rejection", event.reason)
+  kernel.reportError({ source: "worker", ...describe(event.reason) })
+})
+
+self.addEventListener("error", (event) => {
+  kernel.reportError({
+    source: "worker",
+    ...describe(event.error ?? event.message),
+  })
 })

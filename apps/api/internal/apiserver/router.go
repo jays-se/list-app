@@ -26,6 +26,13 @@ func (r *Router) Handle(pattern string, h http.HandlerFunc) {
 	r.routes = append(r.routes, pattern)
 }
 
+// Pattern is the route pattern a request matches ("" when none), used as a
+// low-cardinality metrics label.
+func (r *Router) Pattern(req *http.Request) string {
+	_, pattern := r.mux.Handler(req)
+	return pattern
+}
+
 // Routes returns the registered patterns, sorted.
 func (r *Router) Routes() []string {
 	out := append([]string(nil), r.routes...)

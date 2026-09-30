@@ -6,6 +6,8 @@ import { CapturePage } from "../features/capture/CapturePage.tsx"
 import { ClientDetailPage } from "../features/clients/ClientDetailPage.tsx"
 import { ClientsPage } from "../features/clients/ClientsPage.tsx"
 import { DashboardPage } from "../features/dashboard/DashboardPage.tsx"
+import { DocPage } from "../features/docs/DocPage.tsx"
+import { DocsPage } from "../features/docs/DocsPage.tsx"
 import { InboxPage } from "../features/inbox/InboxPage.tsx"
 import { listParams, TasksPage } from "../features/tasks/TasksPage.tsx"
 import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
@@ -58,6 +60,23 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
               },
             },
             { path: "/capture", element: <CapturePage /> },
+            {
+              path: "/docs",
+              element: <DocsPage />,
+              loader: () => {
+                bridge.prefetch("docs.list", {})
+                return null
+              },
+            },
+            {
+              path: "/docs/:docId",
+              element: <DocPage />,
+              loader: ({ params }) => {
+                if (params.docId)
+                  bridge.prefetch("docs.detail", { docId: params.docId })
+                return null
+              },
+            },
             {
               path: "/tasks",
               element: <TasksPage />,

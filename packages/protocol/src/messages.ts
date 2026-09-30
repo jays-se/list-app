@@ -36,6 +36,15 @@ export type Command =
     }
   | { kind: "command"; name: "visibility"; args: { visible: boolean } }
   | { kind: "command"; name: "reset"; args: Record<string, never> }
+  /** An unexpected error to report to the API (E12-S1); never awaited. */
+  | { kind: "command"; name: "error.report"; args: ErrorReport }
+
+export interface ErrorReport {
+  source: "main" | "worker"
+  message: string
+  stack?: string
+  url?: string
+}
 
 export type CommandName = Command["name"]
 
@@ -76,6 +85,7 @@ const COMMANDS: ReadonlySet<string> = new Set<CommandName>([
   "view.prefetch",
   "visibility",
   "reset",
+  "error.report",
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {

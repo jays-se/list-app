@@ -1,5 +1,7 @@
 import { captureActions } from "./capture/capture.ts"
 import { clientActions, clientViews } from "./clients/clients.ts"
+import { docActions } from "./docs/docs.actions.ts"
+import { docViews } from "./docs/docs.ts"
 import { calendarViews } from "./insights/calendar.ts"
 import { dashboardViews } from "./insights/dashboard.ts"
 import { labelActions, labelViews } from "./labels/labels.ts"
@@ -52,6 +54,7 @@ export const views = {
   ...notificationViews,
   ...dashboardViews,
   ...calendarViews,
+  ...docViews,
 } satisfies ViewRegistry
 
 /** All actions, checked against `ActionMap` in @app/protocol. */
@@ -65,4 +68,5 @@ export const actions = {
   ...notificationActions,
   ...captureActions,
   ...memberActions,
+  ...docActions,
 } satisfies ActionRegistry

@@ -3,6 +3,7 @@ import {
   type ActionKey,
   type ActionResult,
   type Backend,
+  type ErrorReport,
   type ProtocolError,
   protocolError,
   stableHash,
@@ -157,6 +158,11 @@ export class Bridge {
         args: { action, input },
       })
     })
+  }
+
+  /** Forwards an unexpected main-thread error to the worker (E12-S1). */
+  reportError(report: ErrorReport): void {
+    this.backend.send({ kind: "command", name: "error.report", args: report })
   }
 
   setVisible(visible: boolean): void {

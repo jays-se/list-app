@@ -25,6 +25,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "gen:api": "node scripts/gen-api.mjs",
     "check:api": "node scripts/gen-api.mjs --check",
+    "check:bundle": "node scripts/check-bundle.mjs",
     "stack:up": "docker compose -f deploy/compose.yaml up -d --build --wait db storage api",
     "stack:full": "PUBLIC_BASE_URL=http://localhost:8088 docker compose -f deploy/compose.yaml --profile full up -d --build --wait",
     "stack:down": "docker compose -f deploy/compose.yaml --profile full down",

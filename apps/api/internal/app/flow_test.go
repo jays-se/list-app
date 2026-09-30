@@ -331,3 +331,29 @@ func TestLoginFailures(t *testing.T) {
 		t.Fatalf("invalid dev form = %d", res.StatusCode)
 	}
 }
+
+func TestMetricsAndClientErrors(t *testing.T) {
+	base := newServer(t)
+	c := newClient(t, base)
+	res, raw := c.do("POST", "/api/v1/client-errors", map[string]any{"source": "worker", "message": "boom", "stack": "at x"}, true)
+	expect(t, res, raw, 204)
+	res, raw = c.do("POST", "/api/v1/client-errors", map[string]any{"source": "other", "message": strings.Repeat("é", 2000)}, true)
+	expect(t, res, raw, 204)
+	res, raw = c.do("POST", "/api/v1/client-errors", map[string]any{"message": "no csrf"}, false)
+	expect(t, res, raw, 403)
+	c.do("GET", "/api/v1/tasks", nil, false) // 401: counted under its route
+	res, raw = c.do("GET", "/metrics", nil, false)
+	expect(t, res, raw, 200)
+	for _, want := range []string{
+		`client_errors_total{source="worker"} 1`,
+		`client_errors_total{source="unknown"} 1`,
+		`http_requests_total{route="GET /api/v1/tasks",status="401"} 1`,
+		`http_request_duration_seconds_bucket{route="POST /api/v1/client-errors",le="+Inf"}`,
+		"outbox_pending_events 0",
+		"# TYPE outbox_oldest_pending_seconds gauge",
+	} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("metrics missing %q:\n%s", want, raw)
+		}
+	}
+}

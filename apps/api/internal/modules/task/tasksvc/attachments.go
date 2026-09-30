@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -50,24 +49,9 @@ func (s *TaskSvc) loadAttachment(ctx context.Context, tx pgx.Tx, workspaceID, id
 	return a, err
 }
 
-// cleanFilename drops any client path and control characters.
-func cleanFilename(name string) string {
-	name = path.Base(strings.ReplaceAll(strings.TrimSpace(name), `\`, "/"))
-	name = strings.Map(func(r rune) rune {
-		if r < 0x20 || r == 0x7f {
-			return -1
-		}
-		return r
-	}, name)
-	if name == "." || name == "/" {
-		return ""
-	}
-	return name
-}
-
 // StartUpload reserves a slot and returns where to PUT the bytes (ADR-0022).
 func (s *TaskSvc) StartUpload(ctx context.Context, tn Caller, taskID string, req mdl.CreateAttachmentReq) (mdl.Attachment, blobstore.Target, error) {
-	name := cleanFilename(req.Filename)
+	name := blobstore.CleanFilename(req.Filename)
 	switch {
 	case name == "" || utf8.RuneCountInString(name) > 255:
 		return mdl.Attachment{}, blobstore.Target{}, apperr.Field("filename", "Choose a file with a name of 255 characters or fewer")

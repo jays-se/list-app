@@ -16,13 +16,14 @@ This is a team tool for tasks, change-request approvals, docs, clients, labels, 
 
 ## Status
 
-Sprint 5 is complete (2026-09-30).
+The MVP (Sprints 0–6) is complete (2026-09-30).
 - **Sprints 0–2:** foundations, sign-in and workspaces, tasks.
 - **Sprint 3:** clients, subtasks, checklist, comments with mentions, attachments (blob storage), and activity history.
 - **Sprint 4:** change requests and request mode, the transactional outbox, in-app notifications with DUE reminders, the inbox and settings.
 - **Sprint 5:** dashboard, calendar, quick capture (idempotent bulk create), and leaving, removing or promoting members.
+- **Sprint 6:** markdown docs, metrics and client error reporting, rate limits, the security review, bundle budgets, the prod compose stack and the release checklist.
 
-Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 6 (markdown docs and release hardening).
+Per-ticket status is in `docs/backlog/E*.md`. Next up: the first production deploy (`docs/release.md`), then the post-MVP backlog (E13).
 
 ## Architecture in one screen
 
@@ -103,6 +104,7 @@ After you add or change a rule, run `node scripts/sync-agents.mjs`. CI runs it w
 | `pnpm test:e2e` | Playwright against the real API and DB (needs `E2E_DATABASE_URL`; starts API :18080 and web :5199) |
 | `cd apps/api && go test ./...` | API tests (`TEST_DATABASE_URL` enables the Postgres tests) |
 | `pnpm gen:api` | regenerate TS types and decoders from `api/openapi.yaml` (ADR-0018) |
+| `pnpm build && pnpm check:bundle` | production build plus bundle budgets (ADR-0025) |
 | `pnpm tokens` / `pnpm sync:agents` | regenerate tokens.css / agent adapters |
 | `pnpm stack:up` / `stack:full` / `stack:down` | Docker Compose: Postgres, MinIO, API with the dev identity provider (`full` adds Caddy serving the build) |
 

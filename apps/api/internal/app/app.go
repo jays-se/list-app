@@ -15,10 +15,13 @@ import (
 	"github.com/intellicars/list-app/apps/api/internal/apiserver"
 	"github.com/intellicars/list-app/apps/api/internal/blobstore"
 	"github.com/intellicars/list-app/apps/api/internal/config"
+	"github.com/intellicars/list-app/apps/api/internal/metrics"
 	"github.com/intellicars/list-app/apps/api/internal/modules/auth/authhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/auth/authsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/client/clienthdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/client/clientsvc"
+	"github.com/intellicars/list-app/apps/api/internal/modules/doc/dochdlr"
+	"github.com/intellicars/list-app/apps/api/internal/modules/doc/docsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/notification/notificationhdlr"
@@ -27,9 +30,11 @@ import (
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/task/taskhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/task/tasksvc"
+	"github.com/intellicars/list-app/apps/api/internal/modules/telemetry/telemetryhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacehdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacesvc"
 	"github.com/intellicars/list-app/apps/api/internal/outbox"
+	"github.com/intellicars/list-app/apps/api/internal/ratelimit"
 )
 
 const ServiceName = "list-api"
@@ -126,11 +131,23 @@ func Build(cfg config.Config, o Options) (*App, error) {
 	dispatcher := outbox.NewDispatcher(o.Pool, o.Log)
 	notifySvc.Register(dispatcher)
 
-	registrars := []apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels, clients, notifications}
+	docs := dochdlr.NewDocHdlr(docsvc.NewDocSvc(o.Pool, blobs, o.Log), workspaces, o.Log)
+
+	reg := metrics.New()
+	limited := reg.Counter("rate_limited_total", "Requests refused by a rate limit.", "rule")
+	outboxGauges(reg, o.Pool)
+	telemetry := telemetryhdlr.NewTelemetryHdlr(reg, cfg.MetricsToken, o.Log)
+
+	registrars := []apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels, clients, notifications, docs, telemetry}
 	if local, ok := blobs.(*blobstore.Local); ok {
 		registrars = append(registrars, local) // signed /api/v1/blobs/{token} routes
 	}
 	csrfExempt := func(r *http.Request) bool { return authhdlr.IsDevAuthorize(r) || blobstore.IsBlobRoute(r) }
-	h, router := apiserver.NewHandler(o.Log, registrars, apiserver.CSRF(cfg.PublicOrigin(), csrfExempt))
+	var router *apiserver.Router
+	pattern := func(r *http.Request) string { return router.Pattern(r) }
+	h, router := apiserver.NewHandler(o.Log, registrars,
+		requestMetrics(reg, pattern),
+		ratelimit.Middleware(rateRules(cfg.RateLimits, o.Now), ratelimit.ClientIP(cfg.TrustProxyHeaders), func(rule string) { limited.Inc(rule) }),
+		apiserver.CSRF(cfg.PublicOrigin(), csrfExempt))
 	return &App{Handler: h, Router: router, Outbox: dispatcher, Notifications: notifySvc, now: o.Now}, nil
 }

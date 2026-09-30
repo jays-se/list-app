@@ -20,6 +20,7 @@ This folder records the discussions that shaped the product, one dated file per 
 | 9 | 2026-09-30 | Owner rights; Sprint 3 | "Yes workspace owner can edit any task, and start sprint 3" | Workspace owners manage all tasks (ADR-0021). Clients, subtasks, checklist, comments with mentions, attachments over presigned blob storage (local + S3 drivers), activity history and time in status. 252 unit + 13 e2e + Go/Postgres tests pass locally. | ✅ | 0021, 0022 | [sprint 3](2026-09-30-sprint-3.md) |
 | 10 | 2026-09-30 | CI coverage fix; Sprint 4 | "I have commited the changes to git, and start with sprint 4" | CI coverage gate fixed (`pnpm check` now runs coverage). Change requests (create, approve through the edit path, reject, withdraw, stale 409), transactional outbox + dispatcher, notifications (6 kinds, DUE scheduler, settings), request-mode UI and inbox. 287 unit + 14 e2e + Go/Postgres tests pass locally. | ✅ | 0023 | [sprint 4](2026-09-30-sprint-4.md) |
 | 11 | 2026-09-30 | Run it locally; Sprint 5 | "Before starting with sprint 5, let's test the UI once, run the backend and frontend both…" then "continue with sprint 5, let the server and web running" | Dev stack running on :5180 and :8080 (`listapp_dev` database). Dashboard, calendar, quick capture (bulk and idempotent), member lifecycle (leave, remove, promote, cleanup), and the worker reacting to "removed from workspace". 303 unit + 16 e2e + Go/Postgres tests pass locally. | ✅ | 0024 | [sprint 5](2026-09-30-sprint-5.md) |
+| 12 | 2026-09-30 | Sprint 6 | "continue with sprint 6" | Markdown docs (in-house safe AST, worker autosave with conflict handling, leave guard, files, upload-as-doc), in-house metrics, client error reporting, rate limits, security review (govulncheck fix), bundle budgets, keyboard e2e, prod compose, release checklist and restore drill. 333 unit + 18 e2e + Go/Postgres tests pass locally. | ✅ | 0025 | [sprint 6](2026-09-30-sprint-6.md) |
 
 ## Open items across conversations
 | Item | Raised in | Status |
@@ -36,3 +37,6 @@ This folder records the discussions that shaped the product, one dated file per 
 | DUE reminders use the UTC date; per-workspace time zones? | #10 | ⏳ open |
 | Prune `idempotency_keys` and stale PENDING attachments (a scheduled job) | #11 | ⏳ E12 |
 | Dashboard aggregates in the worker; add `/dashboard/summary` past about 10k tasks | #11 | ⏳ watch |
+| First production host, a real restore drill, and Prometheus scraping | #12 | ⏳ needs a VM, DNS and a Google OAuth client |
+| OTel traces (SDK and collector) | #12 | ⏳ deferred (ADR-0025) |
+| Measure INP with field data | #12 | ⏳ open |

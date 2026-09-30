@@ -60,4 +60,10 @@ All tables have `workspace_id` and a `<table>_tenant` RLS policy.
 | `tasks.source` | Where a captured task came from | `MEETING_NOTE`, `PERSONAL` or NULL (made in the app) |
 | `idempotency_keys` | Safe retries for `POST /tasks/bulk` | PK `(user_id, key)`, `request_hash`, `response` stored as **text** so a replay is byte-identical, `workspace_id`. RLS. Rows are written in the same transaction as the tasks. Pruning old rows is an E12 job. |
 
-Feature tables for docs arrive with their feature tickets. Each adds a numbered migration and a section here.
+## Migration 0007: docs (Sprint 6, ADR-0025)
+| Table | Purpose | Notes |
+|---|---|---|
+| `docs` | Markdown docs | `title` is 1–200 characters and `content` at most 200,000. `client_id` is set to NULL when the client is deleted. `created_by` and `updated_by` show "A former member" once the person has left. `version` is used for If-Match. RLS. |
+| `doc_files` | Files on a doc | Same lifecycle as `attachments` (PENDING, then READY), with `size` at most 20 MB and at most 10 per doc (enforced in the service). Cascades with the doc. RLS. |
+
+All MVP tables are now in place. Pruning `idempotency_keys` and stale PENDING uploads is a follow-up job. Each adds a numbered migration and a section here.

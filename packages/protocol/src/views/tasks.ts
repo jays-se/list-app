@@ -330,6 +330,8 @@ export interface ClientDetailVM {
   saved: ClientDraft
   tasks: TaskRowVM[]
   tasksText: string
+  docs: import("./docs.ts").DocRowVM[]
+  docsText: string
   canDelete: boolean
   colorOptions: OptionVM<LabelColorKey>[]
 }

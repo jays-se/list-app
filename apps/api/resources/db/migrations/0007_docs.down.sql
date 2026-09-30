@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS doc_files;
+DROP TABLE IF EXISTS docs;

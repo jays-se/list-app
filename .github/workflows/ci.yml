@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*"]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -32,6 +33,10 @@ jobs:
       - run: pnpm check:api
       - run: pnpm test:coverage
       - run: pnpm build
+      - name: Bundle budgets (E12-S3)
+        run: pnpm check:bundle
+      - name: Dependency audit (production deps)
+        run: pnpm audit --prod --audit-level high
       - uses: actions/upload-artifact@v4
         with:
           name: web-dist
@@ -65,6 +70,8 @@ jobs:
       - run: go test -race -cover ./...
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      - name: Known vulnerabilities (govulncheck)
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   contract:
     name: API contract · no breaking changes
@@ -77,8 +84,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
-      - name: Validate the compose stack definition
-        run: docker compose -f deploy/compose.yaml --profile full config --quiet
+      - name: Validate the compose stack definitions
+        run: |
+          docker compose -f deploy/compose.yaml --profile full config --quiet
+          docker compose -f deploy/compose.prod.yml --env-file deploy/.env.example config --quiet
       - name: Compare api/openapi.yaml with the base branch
         run: |
           if git cat-file -e "origin/${{ github.base_ref }}:api/openapi.yaml" 2>/dev/null; then
@@ -125,8 +134,8 @@ jobs:
           retention-days: 7
 
   image:
-    name: Build API image (GHCR)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Build images (GHCR)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: [web, api, e2e]
     runs-on: ubuntu-latest
     permissions:
@@ -144,7 +153,15 @@ jobs:
         with:
           context: apps/api
           push: true
-          build-args: APP_VERSION=${{ github.sha }}
+          build-args: APP_VERSION=${{ github.ref_name }}
           tags: |
             ghcr.io/${{ github.repository }}/api:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/api:main
+            ghcr.io/${{ github.repository }}/api:${{ github.ref_name }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/web.Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/web:${{ github.ref_name }}

@@ -13,6 +13,7 @@ function fakeApi(role: "OWNER" | "MEMBER" = "OWNER") {
       color: "teal",
       notes: null,
       taskCount: 1,
+      docCount: 0,
     },
   ]
   let labels = [{ id: "l1", name: "Bug", color: "red" }]
@@ -22,6 +23,7 @@ function fakeApi(role: "OWNER" | "MEMBER" = "OWNER") {
     const method = init?.method ?? "GET"
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     requests.push({ method, path, body })
+    if (path.startsWith("/docs")) return json({ docs: [] })
     switch (`${method} ${path}`) {
       case "GET /auth/me":
         return json({
@@ -47,7 +49,7 @@ function fakeApi(role: "OWNER" | "MEMBER" = "OWNER") {
               404
             )
       case "POST /clients": {
-        const c = { id: "c2", taskCount: 0, ...body }
+        const c = { id: "c2", taskCount: 0, docCount: 0, ...body }
         clients = [...clients, c]
         return json({ client: c }, 201)
       }

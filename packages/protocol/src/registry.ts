@@ -1,3 +1,4 @@
+import type { DocDetailVM, DocsVM } from "./views/docs.ts"
 import type {
   InboxBadgeVM,
   InboxFilter,
@@ -59,6 +60,8 @@ export interface ViewMap {
   "dashboard.summary": { params: Record<string, never>; data: DashboardVM }
   /** `month` is "YYYY-MM"; missing or invalid means this month. */
   "calendar.month": { params: { month?: string }; data: CalendarVM }
+  "docs.list": { params: { clientId?: string }; data: DocsVM }
+  "docs.detail": { params: { docId: string }; data: DocDetailVM }
 }
 
 type NoInput = Record<string, never>
@@ -177,6 +180,41 @@ export interface ActionMap {
     result: { created: number }
   }
   "workspaces.leave": { input: NoInput; result: null }
+  "docs.create": {
+    input: { title: string; clientId?: string }
+    result: { id: string }
+  }
+  /**
+   * Each file becomes a doc: .md/.txt (≤ 1 MB) as content, anything else
+   * (≤ 20 MB) attached to a doc named after it (ADR-0025).
+   */
+  "docs.upload": {
+    input: { files: File[]; clientId?: string }
+    result: { ids: string[]; failed: { filename: string; message: string }[] }
+  }
+  /** Edits the draft; the worker autosaves after a short pause. */
+  "docs.edit": {
+    input: {
+      docId: string
+      title?: string
+      content?: string
+      clientId?: string
+    }
+    result: null
+  }
+  /** Save now (e.g. before leaving). Resolves when saved. */
+  "docs.flush": { input: { docId: string }; result: null }
+  /** Drop the local draft and load the latest version (after a conflict). */
+  "docs.reload": { input: { docId: string }; result: null }
+  "docs.delete": { input: { docId: string }; result: null }
+  "docs.attach": {
+    input: { docId: string; files: File[] }
+    result: {
+      uploaded: number
+      failed: { filename: string; message: string }[]
+    }
+  }
+  "docs.removeFile": { input: { docId: string; fileId: string }; result: null }
   "members.remove": { input: { userId: string }; result: null }
   "members.setRole": {
     input: { userId: string; role: "OWNER" | "MEMBER" }

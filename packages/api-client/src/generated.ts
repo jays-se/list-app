@@ -285,6 +285,7 @@ export function decodeChecklistItemResponse(
 }
 
 export interface Client {
+  docCount: number
   id: string
   name: string
   email: string | null
@@ -295,6 +296,7 @@ export interface Client {
 }
 export function decodeClient(v: unknown, p = "$"): Client {
   return decObject(v, p, (o) => ({
+    docCount: decNumber(o.docCount, `${p}.docCount`, true),
     id: decString(o.id, `${p}.id`),
     name: decString(o.name, `${p}.name`),
     email: o.email === null ? null : decString(o.email, `${p}.email`),
@@ -302,6 +304,30 @@ export function decodeClient(v: unknown, p = "$"): Client {
     color: decodeLabelColor(o.color, `${p}.color`),
     notes: o.notes === null ? null : decString(o.notes, `${p}.notes`),
     taskCount: decNumber(o.taskCount, `${p}.taskCount`, true),
+  }))
+}
+
+export interface ClientErrorReport {
+  source: "worker" | "main"
+  message: string
+  stack?: string
+  url?: string
+  release?: string
+}
+export function decodeClientErrorReport(
+  v: unknown,
+  p = "$"
+): ClientErrorReport {
+  return decObject(v, p, (o) => ({
+    source: decEnum(o.source, `${p}.source`, ["worker", "main"] as const),
+    message: decString(o.message, `${p}.message`),
+    ...(o.stack === undefined
+      ? {}
+      : { stack: decString(o.stack, `${p}.stack`) }),
+    ...(o.url === undefined ? {} : { url: decString(o.url, `${p}.url`) }),
+    ...(o.release === undefined
+      ? {}
+      : { release: decString(o.release, `${p}.release`) }),
   }))
 }
 
@@ -466,6 +492,26 @@ export function decodeCreateCommentRequest(
   }))
 }
 
+export interface CreateDocRequest {
+  title: string
+  content?: string
+  clientId?: string | null
+}
+export function decodeCreateDocRequest(v: unknown, p = "$"): CreateDocRequest {
+  return decObject(v, p, (o) => ({
+    title: decString(o.title, `${p}.title`),
+    ...(o.content === undefined
+      ? {}
+      : { content: decString(o.content, `${p}.content`) }),
+    ...(o.clientId === undefined
+      ? {}
+      : {
+          clientId:
+            o.clientId === null ? null : decString(o.clientId, `${p}.clientId`),
+        }),
+  }))
+}
+
 export interface CreateLabelRequest {
   name: string
   color: LabelColor
@@ -558,6 +604,97 @@ export function decodeCreateWorkspaceRequest(
   p = "$"
 ): CreateWorkspaceRequest {
   return decObject(v, p, (o) => ({ name: decString(o.name, `${p}.name`) }))
+}
+
+export interface Doc {
+  id: string
+  title: string
+  content: string
+  client: ClientRef | null
+  createdBy: PersonRef | null
+  updatedBy: PersonRef | null
+  createdAt: string
+  updatedAt: string
+  version: number
+  files: Attachment[]
+  viewer: DocViewer
+}
+export function decodeDoc(v: unknown, p = "$"): Doc {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+    content: decString(o.content, `${p}.content`),
+    client: o.client === null ? null : decodeClientRef(o.client, `${p}.client`),
+    createdBy:
+      o.createdBy === null
+        ? null
+        : decodePersonRef(o.createdBy, `${p}.createdBy`),
+    updatedBy:
+      o.updatedBy === null
+        ? null
+        : decodePersonRef(o.updatedBy, `${p}.updatedBy`),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+    updatedAt: decString(o.updatedAt, `${p}.updatedAt`),
+    version: decNumber(o.version, `${p}.version`, true),
+    files: decArray(o.files, `${p}.files`, (x, xp) => decodeAttachment(x, xp)),
+    viewer: decodeDocViewer(o.viewer, `${p}.viewer`),
+  }))
+}
+
+export interface DocList {
+  docs: DocSummary[]
+}
+export function decodeDocList(v: unknown, p = "$"): DocList {
+  return decObject(v, p, (o) => ({
+    docs: decArray(o.docs, `${p}.docs`, (x, xp) => decodeDocSummary(x, xp)),
+  }))
+}
+
+export interface DocResponse {
+  doc: Doc
+}
+export function decodeDocResponse(v: unknown, p = "$"): DocResponse {
+  return decObject(v, p, (o) => ({ doc: decodeDoc(o.doc, `${p}.doc`) }))
+}
+
+export interface DocSummary {
+  id: string
+  title: string
+  excerpt: string
+  client: ClientRef | null
+  createdBy: PersonRef | null
+  updatedBy: PersonRef | null
+  updatedAt: string
+  version: number
+  fileCount: number
+}
+export function decodeDocSummary(v: unknown, p = "$"): DocSummary {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+    excerpt: decString(o.excerpt, `${p}.excerpt`),
+    client: o.client === null ? null : decodeClientRef(o.client, `${p}.client`),
+    createdBy:
+      o.createdBy === null
+        ? null
+        : decodePersonRef(o.createdBy, `${p}.createdBy`),
+    updatedBy:
+      o.updatedBy === null
+        ? null
+        : decodePersonRef(o.updatedBy, `${p}.updatedBy`),
+    updatedAt: decString(o.updatedAt, `${p}.updatedAt`),
+    version: decNumber(o.version, `${p}.version`, true),
+    fileCount: decNumber(o.fileCount, `${p}.fileCount`, true),
+  }))
+}
+
+export interface DocViewer {
+  canDelete: boolean
+}
+export function decodeDocViewer(v: unknown, p = "$"): DocViewer {
+  return decObject(v, p, (o) => ({
+    canDelete: decBoolean(o.canDelete, `${p}.canDelete`),
+  }))
 }
 
 export interface FieldError {
@@ -1249,6 +1386,29 @@ export function decodeUpdateChecklistItemRequest(
             o.assigneeId === null
               ? null
               : decString(o.assigneeId, `${p}.assigneeId`),
+        }),
+  }))
+}
+
+/** Only present fields change. */
+export interface UpdateDocRequest {
+  title?: string
+  content?: string
+  clientId?: string | null
+}
+export function decodeUpdateDocRequest(v: unknown, p = "$"): UpdateDocRequest {
+  return decObject(v, p, (o) => ({
+    ...(o.title === undefined
+      ? {}
+      : { title: decString(o.title, `${p}.title`) }),
+    ...(o.content === undefined
+      ? {}
+      : { content: decString(o.content, `${p}.content`) }),
+    ...(o.clientId === undefined
+      ? {}
+      : {
+          clientId:
+            o.clientId === null ? null : decString(o.clientId, `${p}.clientId`),
         }),
   }))
 }

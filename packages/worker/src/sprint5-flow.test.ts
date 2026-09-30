@@ -256,3 +256,32 @@ describe("member lifecycle through the kernel", () => {
     expect(reset).toHaveBeenCalledTimes(1)
   })
 })
+
+describe("error reporting", () => {
+  it("posts reports, deduping repeats and capping volume", async () => {
+    const t = harness((method, path) =>
+      method === "POST" && path === "/client-errors"
+        ? new Response(null, { status: 204 })
+        : undefined
+    )
+    const send = (message: string) =>
+      t.kernel.handle({
+        kind: "command",
+        name: "error.report",
+        args: { source: "main", message, stack: "at x", url: "/tasks" },
+      })
+    send("boom")
+    send("boom")
+    for (let i = 0; i < 30; i++) send(`e${i}`)
+    t.kernel.reportError({ source: "worker", message: "late" })
+    await t.settle()
+    const posts = t.calls.filter((c) => c.path === "/client-errors")
+    expect(posts).toHaveLength(20)
+    expect(posts[0]?.body).toEqual({
+      source: "main",
+      message: "boom",
+      stack: "at x",
+      url: "/tasks",
+    })
+  })
+})

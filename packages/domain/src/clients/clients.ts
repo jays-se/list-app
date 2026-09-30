@@ -11,6 +11,7 @@ import type {
   FieldError,
 } from "@app/protocol"
 import type { QueryOptions } from "@app/query"
+import { docsListQuery, toDocRowVM } from "../docs/docs.ts"
 import { LABEL_COLORS } from "../labels/labels.ts"
 import { defineAction, defineView } from "../runtime.ts"
 import { sessionQuery } from "../session/session.queries.ts"
@@ -99,6 +100,7 @@ export const clientViews = {
     queries: (p: { clientId: string }, ctx) => ({
       client: clientQuery(ctx.api, p.clientId),
       session: sessionQuery(ctx.api),
+      docs: docsListQuery(ctx.api, p.clientId),
       tasks: {
         key: [...taskKeys.lists, "client", p.clientId],
         ttl: 0,
@@ -111,7 +113,7 @@ export const clientViews = {
           ).tasks,
       },
     }),
-    compute: ({ client, session, tasks }, _p, ctx): ClientDetailVM => {
+    compute: ({ client, session, tasks, docs }, _p, ctx): ClientDetailVM => {
       const today = todayISO(ctx.now())
       return {
         client: toClientVM(client),
@@ -124,6 +126,8 @@ export const clientViews = {
         },
         tasks: tasks.map((t) => toTaskRowVM(t, today, ctx.locale)),
         tasksText: `${tasks.length} linked ${tasks.length === 1 ? "task" : "tasks"}`,
+        docs: docs.map((d) => toDocRowVM(d, ctx.now(), ctx.locale)),
+        docsText: `${docs.length} linked ${docs.length === 1 ? "doc" : "docs"}`,
         canDelete: session.workspaces?.active?.role === "OWNER",
         colorOptions: LABEL_COLORS,
       }
@@ -152,6 +156,7 @@ export const clientActions = {
       await Promise.all([
         ctx.client.invalidate(clientKeys.all),
         ctx.client.invalidate(taskKeys.all),
+        ctx.client.invalidate(["docs"]),
       ])
       return null
     }
