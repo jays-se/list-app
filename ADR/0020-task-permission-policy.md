@@ -1,6 +1,6 @@
 # ADR-0020: Task permission policy
 
-- **Status:** Accepted (assumption: confirm with the requester)
+- **Status:** Superseded in part by ADR-0021 (workspace owners manage all tasks)
 - **Date:** 2026-09-30
 - **Tickets:** E5-S1, E4-S4, E4-S5, E5-S2, E5-S3
 

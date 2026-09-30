@@ -33,4 +33,17 @@ The source of truth is the migrations in `resources/db/migrations/`. Update this
 
 Every table has `workspace_id` and a `<table>_tenant` RLS policy (USING and WITH CHECK). Clients (`client_id`) and subtasks (`parent_id`) are added by their own migrations in Sprint 3.
 
-Feature tables (requests, docs, clients, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.
+## Migration 0004: collaboration (Sprint 3)
+| Table / column | Purpose | Notes |
+|---|---|---|
+| `clients` | Clients linked to tasks (and later docs) | `name` is 1–100 characters; `color` uses the palette. Deleting a client sets `tasks.client_id` to NULL, so its tasks are unlinked, not deleted. |
+| `tasks.client_id`, `tasks.parent_id` | Client link and subtasks | Subtasks are one level deep (enforced in the service). Deleting a parent deletes its subtasks. |
+| `checklist_items` | Checklist items | `title` is 1–200 characters. `position` keeps the order. The assignee is optional. |
+| `comments`, `comment_mentions` | Comments and @mentions | `author_id` is set to NULL if the user is deleted. The UI shows "A former member" when the author is no longer a member. |
+| `attachments` | File metadata | `status` is PENDING or READY; `size` is at most 5 MB; `storage_key` is unique. The bytes live in blob storage (ADR-0022). |
+| `task_events` | Append-only activity feed | Written in the same transaction as the change it records. |
+| `task_status_stages` | Time in each status | At most one open stage per task (unique partial index). Existing tasks were backfilled. |
+
+All tables have `workspace_id` and a `<table>_tenant` RLS policy.
+
+Feature tables (requests, docs, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.

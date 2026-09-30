@@ -77,6 +77,248 @@ export function decodeActiveWorkspace(v: unknown, p = "$"): ActiveWorkspace {
   }))
 }
 
+export interface Attachment {
+  id: string
+  filename: string
+  mimeType: string
+  size: number
+  uploadedBy: PersonRef | null
+  createdAt: string
+  downloadUrl: string
+}
+export function decodeAttachment(v: unknown, p = "$"): Attachment {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    filename: decString(o.filename, `${p}.filename`),
+    mimeType: decString(o.mimeType, `${p}.mimeType`),
+    size: decNumber(o.size, `${p}.size`, true),
+    uploadedBy:
+      o.uploadedBy === null
+        ? null
+        : decodePersonRef(o.uploadedBy, `${p}.uploadedBy`),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+    downloadUrl: decString(o.downloadUrl, `${p}.downloadUrl`),
+  }))
+}
+
+export interface AttachmentResponse {
+  attachment: Attachment
+}
+export function decodeAttachmentResponse(
+  v: unknown,
+  p = "$"
+): AttachmentResponse {
+  return decObject(v, p, (o) => ({
+    attachment: decodeAttachment(o.attachment, `${p}.attachment`),
+  }))
+}
+
+export interface AttachmentUploadResponse {
+  attachment: Attachment
+  upload: UploadTarget
+}
+export function decodeAttachmentUploadResponse(
+  v: unknown,
+  p = "$"
+): AttachmentUploadResponse {
+  return decObject(v, p, (o) => ({
+    attachment: decodeAttachment(o.attachment, `${p}.attachment`),
+    upload: decodeUploadTarget(o.upload, `${p}.upload`),
+  }))
+}
+
+export interface ChecklistItem {
+  id: string
+  title: string
+  done: boolean
+  assignee: PersonRef | null
+}
+export function decodeChecklistItem(v: unknown, p = "$"): ChecklistItem {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+    done: decBoolean(o.done, `${p}.done`),
+    assignee:
+      o.assignee === null ? null : decodePersonRef(o.assignee, `${p}.assignee`),
+  }))
+}
+
+export interface ChecklistItemResponse {
+  item: ChecklistItem
+}
+export function decodeChecklistItemResponse(
+  v: unknown,
+  p = "$"
+): ChecklistItemResponse {
+  return decObject(v, p, (o) => ({
+    item: decodeChecklistItem(o.item, `${p}.item`),
+  }))
+}
+
+export interface Client {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  color: LabelColor
+  notes: string | null
+  taskCount: number
+}
+export function decodeClient(v: unknown, p = "$"): Client {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    name: decString(o.name, `${p}.name`),
+    email: o.email === null ? null : decString(o.email, `${p}.email`),
+    phone: o.phone === null ? null : decString(o.phone, `${p}.phone`),
+    color: decodeLabelColor(o.color, `${p}.color`),
+    notes: o.notes === null ? null : decString(o.notes, `${p}.notes`),
+    taskCount: decNumber(o.taskCount, `${p}.taskCount`, true),
+  }))
+}
+
+export interface ClientInput {
+  name: string
+  email?: string | null
+  phone?: string | null
+  color: LabelColor
+  notes?: string | null
+}
+export function decodeClientInput(v: unknown, p = "$"): ClientInput {
+  return decObject(v, p, (o) => ({
+    name: decString(o.name, `${p}.name`),
+    ...(o.email === undefined
+      ? {}
+      : { email: o.email === null ? null : decString(o.email, `${p}.email`) }),
+    ...(o.phone === undefined
+      ? {}
+      : { phone: o.phone === null ? null : decString(o.phone, `${p}.phone`) }),
+    color: decodeLabelColor(o.color, `${p}.color`),
+    ...(o.notes === undefined
+      ? {}
+      : { notes: o.notes === null ? null : decString(o.notes, `${p}.notes`) }),
+  }))
+}
+
+export interface ClientList {
+  clients: Client[]
+}
+export function decodeClientList(v: unknown, p = "$"): ClientList {
+  return decObject(v, p, (o) => ({
+    clients: decArray(o.clients, `${p}.clients`, (x, xp) =>
+      decodeClient(x, xp)
+    ),
+  }))
+}
+
+export interface ClientRef {
+  id: string
+  name: string
+  color: LabelColor
+}
+export function decodeClientRef(v: unknown, p = "$"): ClientRef {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    name: decString(o.name, `${p}.name`),
+    color: decodeLabelColor(o.color, `${p}.color`),
+  }))
+}
+
+export interface ClientResponse {
+  client: Client
+}
+export function decodeClientResponse(v: unknown, p = "$"): ClientResponse {
+  return decObject(v, p, (o) => ({
+    client: decodeClient(o.client, `${p}.client`),
+  }))
+}
+
+export interface Comment {
+  id: string
+  body: string
+  author: PersonRef | null
+  mentions: PersonRef[]
+  createdAt: string
+}
+export function decodeComment(v: unknown, p = "$"): Comment {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    body: decString(o.body, `${p}.body`),
+    author: o.author === null ? null : decodePersonRef(o.author, `${p}.author`),
+    mentions: decArray(o.mentions, `${p}.mentions`, (x, xp) =>
+      decodePersonRef(x, xp)
+    ),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+  }))
+}
+
+export interface CommentResponse {
+  comment: Comment
+}
+export function decodeCommentResponse(v: unknown, p = "$"): CommentResponse {
+  return decObject(v, p, (o) => ({
+    comment: decodeComment(o.comment, `${p}.comment`),
+  }))
+}
+
+export interface CreateAttachmentRequest {
+  filename: string
+  mimeType: string
+  size: number
+}
+export function decodeCreateAttachmentRequest(
+  v: unknown,
+  p = "$"
+): CreateAttachmentRequest {
+  return decObject(v, p, (o) => ({
+    filename: decString(o.filename, `${p}.filename`),
+    mimeType: decString(o.mimeType, `${p}.mimeType`),
+    size: decNumber(o.size, `${p}.size`, true),
+  }))
+}
+
+export interface CreateChecklistItemRequest {
+  title: string
+  assigneeId?: string | null
+}
+export function decodeCreateChecklistItemRequest(
+  v: unknown,
+  p = "$"
+): CreateChecklistItemRequest {
+  return decObject(v, p, (o) => ({
+    title: decString(o.title, `${p}.title`),
+    ...(o.assigneeId === undefined
+      ? {}
+      : {
+          assigneeId:
+            o.assigneeId === null
+              ? null
+              : decString(o.assigneeId, `${p}.assigneeId`),
+        }),
+  }))
+}
+
+export interface CreateCommentRequest {
+  body: string
+  mentionedUserIds?: string[]
+}
+export function decodeCreateCommentRequest(
+  v: unknown,
+  p = "$"
+): CreateCommentRequest {
+  return decObject(v, p, (o) => ({
+    body: decString(o.body, `${p}.body`),
+    ...(o.mentionedUserIds === undefined
+      ? {}
+      : {
+          mentionedUserIds: decArray(
+            o.mentionedUserIds,
+            `${p}.mentionedUserIds`,
+            (x, xp) => decString(x, xp)
+          ),
+        }),
+  }))
+}
+
 export interface CreateLabelRequest {
   name: string
   color: LabelColor
@@ -101,6 +343,8 @@ export interface CreateTaskRequest {
   dueDate?: string | null
   assigneeIds?: string[]
   labelIds?: string[]
+  clientId?: string | null
+  parentId?: string | null
 }
 export function decodeCreateTaskRequest(
   v: unknown,
@@ -143,6 +387,18 @@ export function decodeCreateTaskRequest(
           labelIds: decArray(o.labelIds, `${p}.labelIds`, (x, xp) =>
             decString(x, xp)
           ),
+        }),
+    ...(o.clientId === undefined
+      ? {}
+      : {
+          clientId:
+            o.clientId === null ? null : decString(o.clientId, `${p}.clientId`),
+        }),
+    ...(o.parentId === undefined
+      ? {}
+      : {
+          parentId:
+            o.parentId === null ? null : decString(o.parentId, `${p}.parentId`),
         }),
   }))
 }
@@ -365,6 +621,19 @@ export function decodeRole(v: unknown, p = "$"): Role {
   return decEnum(v, p, ["OWNER", "MEMBER"] as const)
 }
 
+export interface StatusStage {
+  status: TaskStatus
+  enteredAt: string
+  leftAt: string | null
+}
+export function decodeStatusStage(v: unknown, p = "$"): StatusStage {
+  return decObject(v, p, (o) => ({
+    status: decodeTaskStatus(o.status, `${p}.status`),
+    enteredAt: decString(o.enteredAt, `${p}.enteredAt`),
+    leftAt: o.leftAt === null ? null : decString(o.leftAt, `${p}.leftAt`),
+  }))
+}
+
 export interface SwitchWorkspaceRequest {
   workspaceId: string
 }
@@ -407,6 +676,12 @@ export interface Task {
   updatedAt: string
   version: number
   viewer: TaskViewer
+  client: ClientRef | null
+  parent: TaskRef | null
+  subtasks: TaskRef[]
+  checklist: ChecklistItem[]
+  comments: Comment[]
+  attachments: Attachment[]
 }
 export function decodeTask(v: unknown, p = "$"): Task {
   return decObject(v, p, (o) => ({
@@ -433,6 +708,123 @@ export function decodeTask(v: unknown, p = "$"): Task {
     updatedAt: decString(o.updatedAt, `${p}.updatedAt`),
     version: decNumber(o.version, `${p}.version`, true),
     viewer: decodeTaskViewer(o.viewer, `${p}.viewer`),
+    client: o.client === null ? null : decodeClientRef(o.client, `${p}.client`),
+    parent: o.parent === null ? null : decodeTaskRef(o.parent, `${p}.parent`),
+    subtasks: decArray(o.subtasks, `${p}.subtasks`, (x, xp) =>
+      decodeTaskRef(x, xp)
+    ),
+    checklist: decArray(o.checklist, `${p}.checklist`, (x, xp) =>
+      decodeChecklistItem(x, xp)
+    ),
+    comments: decArray(o.comments, `${p}.comments`, (x, xp) =>
+      decodeComment(x, xp)
+    ),
+    attachments: decArray(o.attachments, `${p}.attachments`, (x, xp) =>
+      decodeAttachment(x, xp)
+    ),
+  }))
+}
+
+export interface TaskCounts {
+  subtasks: number
+  subtasksDone: number
+  checklist: number
+  checklistDone: number
+  comments: number
+  attachments: number
+}
+export function decodeTaskCounts(v: unknown, p = "$"): TaskCounts {
+  return decObject(v, p, (o) => ({
+    subtasks: decNumber(o.subtasks, `${p}.subtasks`, true),
+    subtasksDone: decNumber(o.subtasksDone, `${p}.subtasksDone`, true),
+    checklist: decNumber(o.checklist, `${p}.checklist`, true),
+    checklistDone: decNumber(o.checklistDone, `${p}.checklistDone`, true),
+    comments: decNumber(o.comments, `${p}.comments`, true),
+    attachments: decNumber(o.attachments, `${p}.attachments`, true),
+  }))
+}
+
+export interface TaskEvent {
+  id: string
+  kind: TaskEventKind
+  field: string | null
+  from: string | null
+  to: string | null
+  subject: string | null
+  actor: PersonRef | null
+  createdAt: string
+}
+export function decodeTaskEvent(v: unknown, p = "$"): TaskEvent {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    kind: decodeTaskEventKind(o.kind, `${p}.kind`),
+    field: o.field === null ? null : decString(o.field, `${p}.field`),
+    from: o.from === null ? null : decString(o.from, `${p}.from`),
+    to: o.to === null ? null : decString(o.to, `${p}.to`),
+    subject: o.subject === null ? null : decString(o.subject, `${p}.subject`),
+    actor: o.actor === null ? null : decodePersonRef(o.actor, `${p}.actor`),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+  }))
+}
+
+export type TaskEventKind =
+  | "CREATED"
+  | "STATUS"
+  | "UPDATED"
+  | "ASSIGNEE_ADDED"
+  | "ASSIGNEE_REMOVED"
+  | "LABEL_ADDED"
+  | "LABEL_REMOVED"
+  | "OWNER_ADDED"
+  | "OWNER_REMOVED"
+  | "CHECKLIST_ADDED"
+  | "CHECKLIST_CHECKED"
+  | "CHECKLIST_UNCHECKED"
+  | "CHECKLIST_RENAMED"
+  | "CHECKLIST_ASSIGNED"
+  | "CHECKLIST_UNASSIGNED"
+  | "CHECKLIST_REMOVED"
+  | "COMMENTED"
+  | "ATTACHMENT_ADDED"
+  | "ATTACHMENT_REMOVED"
+  | "SUBTASK_ADDED"
+export function decodeTaskEventKind(v: unknown, p = "$"): TaskEventKind {
+  return decEnum(v, p, [
+    "CREATED",
+    "STATUS",
+    "UPDATED",
+    "ASSIGNEE_ADDED",
+    "ASSIGNEE_REMOVED",
+    "LABEL_ADDED",
+    "LABEL_REMOVED",
+    "OWNER_ADDED",
+    "OWNER_REMOVED",
+    "CHECKLIST_ADDED",
+    "CHECKLIST_CHECKED",
+    "CHECKLIST_UNCHECKED",
+    "CHECKLIST_RENAMED",
+    "CHECKLIST_ASSIGNED",
+    "CHECKLIST_UNASSIGNED",
+    "CHECKLIST_REMOVED",
+    "COMMENTED",
+    "ATTACHMENT_ADDED",
+    "ATTACHMENT_REMOVED",
+    "SUBTASK_ADDED",
+  ] as const)
+}
+
+export interface TaskHistory {
+  events: TaskEvent[]
+  stages: StatusStage[]
+}
+export function decodeTaskHistory(v: unknown, p = "$"): TaskHistory {
+  return decObject(v, p, (o) => ({
+    events: decArray(o.events, `${p}.events`, (x, xp) =>
+      decodeTaskEvent(x, xp)
+    ),
+    stages: decArray(o.stages, `${p}.stages`, (x, xp) =>
+      decodeStatusStage(x, xp)
+    ),
   }))
 }
 
@@ -448,6 +840,19 @@ export function decodeTaskList(v: unknown, p = "$"): TaskList {
 export type TaskPriority = "URGENT" | "HIGH" | "MEDIUM" | "LOW" | "NONE"
 export function decodeTaskPriority(v: unknown, p = "$"): TaskPriority {
   return decEnum(v, p, ["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"] as const)
+}
+
+export interface TaskRef {
+  id: string
+  title: string
+  status: TaskStatus
+}
+export function decodeTaskRef(v: unknown, p = "$"): TaskRef {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+    status: decodeTaskStatus(o.status, `${p}.status`),
+  }))
 }
 
 export interface TaskResponse {
@@ -488,6 +893,9 @@ export interface TaskSummary {
   createdBy: PersonRef
   version: number
   updatedAt: string
+  client: ClientRef | null
+  parent: TaskRef | null
+  counts: TaskCounts
 }
 export function decodeTaskSummary(v: unknown, p = "$"): TaskSummary {
   return decObject(v, p, (o) => ({
@@ -505,6 +913,9 @@ export function decodeTaskSummary(v: unknown, p = "$"): TaskSummary {
     createdBy: decodePersonRef(o.createdBy, `${p}.createdBy`),
     version: decNumber(o.version, `${p}.version`, true),
     updatedAt: decString(o.updatedAt, `${p}.updatedAt`),
+    client: o.client === null ? null : decodeClientRef(o.client, `${p}.client`),
+    parent: o.parent === null ? null : decodeTaskRef(o.parent, `${p}.parent`),
+    counts: decodeTaskCounts(o.counts, `${p}.counts`),
   }))
 }
 
@@ -522,6 +933,31 @@ export function decodeTaskViewer(v: unknown, p = "$"): TaskViewer {
   }))
 }
 
+export interface UpdateChecklistItemRequest {
+  title?: string
+  done?: boolean
+  assigneeId?: string | null
+}
+export function decodeUpdateChecklistItemRequest(
+  v: unknown,
+  p = "$"
+): UpdateChecklistItemRequest {
+  return decObject(v, p, (o) => ({
+    ...(o.title === undefined
+      ? {}
+      : { title: decString(o.title, `${p}.title`) }),
+    ...(o.done === undefined ? {} : { done: decBoolean(o.done, `${p}.done`) }),
+    ...(o.assigneeId === undefined
+      ? {}
+      : {
+          assigneeId:
+            o.assigneeId === null
+              ? null
+              : decString(o.assigneeId, `${p}.assigneeId`),
+        }),
+  }))
+}
+
 /** Only the fields present are changed. */
 export interface UpdateTaskRequest {
   title?: string
@@ -531,6 +967,7 @@ export interface UpdateTaskRequest {
   startDate?: string
   endDate?: string
   dueDate?: string | null
+  clientId?: string | null
 }
 export function decodeUpdateTaskRequest(
   v: unknown,
@@ -566,6 +1003,25 @@ export function decodeUpdateTaskRequest(
           dueDate:
             o.dueDate === null ? null : decString(o.dueDate, `${p}.dueDate`),
         }),
+    ...(o.clientId === undefined
+      ? {}
+      : {
+          clientId:
+            o.clientId === null ? null : decString(o.clientId, `${p}.clientId`),
+        }),
+  }))
+}
+
+export interface UploadTarget {
+  method: "PUT"
+  url: string
+  headers: Record<string, string>
+}
+export function decodeUploadTarget(v: unknown, p = "$"): UploadTarget {
+  return decObject(v, p, (o) => ({
+    method: decEnum(o.method, `${p}.method`, ["PUT"] as const),
+    url: decString(o.url, `${p}.url`),
+    headers: decRecord(o.headers, `${p}.headers`, (x, xp) => decString(x, xp)),
   }))
 }
 

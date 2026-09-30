@@ -38,17 +38,21 @@ func (h *TaskHdlr) RegisterRoutes(r *apiserver.Router) {
 	r.Handle("PUT /api/v1/tasks/{taskId}/assignees", ws(h.replaceUsers(tasksvc.SetAssignees)))
 	r.Handle("PUT /api/v1/tasks/{taskId}/owners", ws(h.replaceUsers(tasksvc.SetOwners)))
 	r.Handle("PUT /api/v1/tasks/{taskId}/labels", ws(h.replaceLabels))
+	h.registerCollab(r)
 }
 
-func tenant(r *http.Request) db.Tenant {
+func tenant(r *http.Request) tasksvc.Caller {
 	t, _ := reqctx.TenantFrom(r.Context())
-	return db.Tenant{WorkspaceID: t.WorkspaceID, UserID: t.UserID}
+	return tasksvc.Caller{Tenant: db.Tenant{WorkspaceID: t.WorkspaceID, UserID: t.UserID}, Role: t.Role}
 }
 
 func (h *TaskHdlr) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	tn := tenant(r)
-	f := mdl.Filter{Status: q.Get("status"), AssigneeID: q.Get("assigneeId"), LabelID: q.Get("labelId")}
+	f := mdl.Filter{
+		Status: q.Get("status"), AssigneeID: q.Get("assigneeId"), LabelID: q.Get("labelId"),
+		ClientID: q.Get("clientId"), ParentID: q.Get("parentId"),
+	}
 	if q.Get("mine") == "true" {
 		f.AssigneeID = tn.UserID
 	}

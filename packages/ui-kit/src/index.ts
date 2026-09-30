@@ -48,6 +48,7 @@ export {
 } from "./components/LabelChip/LabelChip.tsx"
 export { Select, type SelectProps } from "./components/Select/Select.tsx"
 export { Spinner, type SpinnerProps } from "./components/Spinner/Spinner.tsx"
+export { type TabItem, Tabs, type TabsProps } from "./components/Tabs/Tabs.tsx"
 export { cx } from "./cx.ts"
 export * from "./icons/index.tsx"
 export {

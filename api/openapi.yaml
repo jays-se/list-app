@@ -19,6 +19,12 @@ tags:
     description: Action items in the active workspace (E4). Mutations need the manage permission (E5-S1).
   - name: labels
     description: Workspace labels (E8-S2).
+  - name: clients
+    description: Clients tasks can be linked to (E8-S1).
+  - name: collaboration
+    description: Checklist, comments, attachments, history on a task (E4-S7..S9, E6).
+  - name: blobs
+    description: Local blob storage driver (BLOB_DRIVER=local). Token-authorized like S3 presigned URLs (ADR-0022).
 security:
   - sessionCookie: []
 paths:
@@ -273,6 +279,8 @@ paths:
         - { name: mine, in: query, description: "true = assigned to me (overrides assigneeId)", schema: { type: string, enum: ["true"] } }
         - { name: assigneeId, in: query, schema: { type: string } }
         - { name: labelId, in: query, schema: { type: string } }
+        - { name: clientId, in: query, schema: { type: string } }
+        - { name: parentId, in: query, description: Only subtasks of this task, schema: { type: string } }
       responses:
         "200":
           description: Tasks, due date first (no date last), then newest
@@ -463,6 +471,270 @@ paths:
           description: Deleted
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/checklist:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [collaboration]
+      operationId: addChecklistItem
+      summary: Add a checklist item (manage permission)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateChecklistItemRequest" }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChecklistItemResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/checklist/{itemId}:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [collaboration]
+      operationId: updateChecklistItem
+      summary: Check, rename or (un)assign an item (manage permission)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateChecklistItemRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChecklistItemResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [collaboration]
+      operationId: deleteChecklistItem
+      summary: Remove an item (manage permission)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Removed
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/comments:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [collaboration]
+      operationId: addComment
+      summary: Comment on a task (any member); mentions must be members
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCommentRequest" }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/attachments:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [collaboration]
+      operationId: startAttachmentUpload
+      summary: Reserve an upload slot (≤ 5 files of ≤ 5 MB per task; manage permission)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAttachmentRequest" }
+      responses:
+        "201":
+          description: Pending attachment + where to PUT the bytes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentUploadResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/AttachmentId"
+    get:
+      tags: [collaboration]
+      operationId: downloadAttachment
+      summary: Download (browser navigation); redirects to a short-lived signed URL
+      responses:
+        "302":
+          description: Redirect to the file
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [collaboration]
+      operationId: deleteAttachment
+      summary: Remove an attachment (manage permission)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Removed
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/attachments/{attachmentId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/AttachmentId"
+    post:
+      tags: [collaboration]
+      operationId: completeAttachmentUpload
+      summary: Confirm the upload; the server checks the stored size
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/history:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [collaboration]
+      operationId: getTaskHistory
+      summary: Activity (newest first) and time spent per status
+      responses:
+        "200":
+          description: History
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskHistory" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/blobs/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [blobs]
+      operationId: putBlob
+      summary: Upload bytes to a signed slot (local driver only)
+      x-blob-local: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "204":
+          description: Stored
+        default:
+          $ref: "#/components/responses/Problem"
+    get:
+      tags: [blobs]
+      operationId: getBlob
+      summary: Download bytes from a signed URL (local driver only)
+      x-blob-local: true
+      security: []
+      responses:
+        "200":
+          description: The file, as an attachment
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/clients:
+    get:
+      tags: [clients]
+      operationId: listClients
+      summary: Clients of the active workspace
+      responses:
+        "200":
+          description: Clients, alphabetical
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientList" }
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [clients]
+      operationId: createClient
+      summary: Create a client (any member)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/clients/{clientId}:
+    parameters:
+      - { name: clientId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [clients]
+      operationId: getClient
+      summary: One client
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      tags: [clients]
+      operationId: updateClient
+      summary: Replace a client's details (any member)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [clients]
+      operationId: deleteClient
+      summary: Delete a client (workspace OWNER); its tasks are unlinked, not deleted
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Deleted
+        default:
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -474,6 +746,11 @@ components:
       description: 'Task version, e.g. "3". Send it back in If-Match.'
       schema: { type: string }
   parameters:
+    AttachmentId:
+      name: attachmentId
+      in: path
+      required: true
+      schema: { type: string }
     TaskId:
       name: taskId
       in: path
@@ -650,7 +927,7 @@ components:
         isAssignee: { type: boolean }
     TaskSummary:
       type: object
-      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt]
+      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt, client, parent, counts]
       properties:
         id: { type: string }
         title: { type: string }
@@ -668,9 +945,18 @@ components:
         createdBy: { $ref: "#/components/schemas/PersonRef" }
         version: { type: integer }
         updatedAt: { type: string, format: date-time }
+        client:
+          anyOf:
+            - { $ref: "#/components/schemas/ClientRef" }
+            - { type: "null" }
+        parent:
+          anyOf:
+            - { $ref: "#/components/schemas/TaskRef" }
+            - { type: "null" }
+        counts: { $ref: "#/components/schemas/TaskCounts" }
     Task:
       type: object
-      required: [id, title, description, status, priority, startDate, endDate, dueDate, assignees, owners, labels, createdBy, createdAt, updatedAt, version, viewer]
+      required: [id, title, description, status, priority, startDate, endDate, dueDate, assignees, owners, labels, createdBy, createdAt, updatedAt, version, viewer, client, parent, subtasks, checklist, comments, attachments]
       properties:
         id: { type: string }
         title: { type: string }
@@ -694,6 +980,26 @@ components:
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
         viewer: { $ref: "#/components/schemas/TaskViewer" }
+        client:
+          anyOf:
+            - { $ref: "#/components/schemas/ClientRef" }
+            - { type: "null" }
+        parent:
+          anyOf:
+            - { $ref: "#/components/schemas/TaskRef" }
+            - { type: "null" }
+        subtasks:
+          type: array
+          items: { $ref: "#/components/schemas/TaskRef" }
+        checklist:
+          type: array
+          items: { $ref: "#/components/schemas/ChecklistItem" }
+        comments:
+          type: array
+          items: { $ref: "#/components/schemas/Comment" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/Attachment" }
     TaskList:
       type: object
       required: [tasks]
@@ -723,6 +1029,8 @@ components:
         labelIds:
           type: array
           items: { type: string }
+        clientId: { type: [string, "null"] }
+        parentId: { type: [string, "null"], description: Makes this a subtask (one level deep) }
     UpdateTaskRequest:
       type: object
       description: Only the fields present are changed.
@@ -734,6 +1042,7 @@ components:
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
         dueDate: { type: [string, "null"], format: date }
+        clientId: { type: [string, "null"] }
     UserIdsRequest:
       type: object
       required: [userIds]
@@ -766,6 +1075,196 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 40 }
         color: { $ref: "#/components/schemas/LabelColor" }
+    ClientRef:
+      type: object
+      required: [id, name, color]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        color: { $ref: "#/components/schemas/LabelColor" }
+    TaskRef:
+      type: object
+      required: [id, title, status]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+    TaskCounts:
+      type: object
+      required: [subtasks, subtasksDone, checklist, checklistDone, comments, attachments]
+      properties:
+        subtasks: { type: integer }
+        subtasksDone: { type: integer }
+        checklist: { type: integer }
+        checklistDone: { type: integer }
+        comments: { type: integer }
+        attachments: { type: integer }
+    ChecklistItem:
+      type: object
+      required: [id, title, done, assignee]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        done: { type: boolean }
+        assignee:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+    ChecklistItemResponse:
+      type: object
+      required: [item]
+      properties:
+        item: { $ref: "#/components/schemas/ChecklistItem" }
+    CreateChecklistItemRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        assigneeId: { type: [string, "null"] }
+    UpdateChecklistItemRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        done: { type: boolean }
+        assigneeId: { type: [string, "null"] }
+    Comment:
+      type: object
+      required: [id, body, author, mentions, createdAt]
+      properties:
+        id: { type: string }
+        body: { type: string }
+        author:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        mentions:
+          type: array
+          items: { $ref: "#/components/schemas/PersonRef" }
+        createdAt: { type: string, format: date-time }
+    CommentResponse:
+      type: object
+      required: [comment]
+      properties:
+        comment: { $ref: "#/components/schemas/Comment" }
+    CreateCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        mentionedUserIds:
+          type: array
+          items: { type: string }
+    Attachment:
+      type: object
+      required: [id, filename, mimeType, size, uploadedBy, createdAt, downloadUrl]
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        mimeType: { type: string }
+        size: { type: integer }
+        uploadedBy:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        createdAt: { type: string, format: date-time }
+        downloadUrl: { type: string }
+    AttachmentResponse:
+      type: object
+      required: [attachment]
+      properties:
+        attachment: { $ref: "#/components/schemas/Attachment" }
+    CreateAttachmentRequest:
+      type: object
+      required: [filename, mimeType, size]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 255 }
+        mimeType: { type: string }
+        size: { type: integer, description: Bytes; at most 5 MB }
+    UploadTarget:
+      type: object
+      required: [method, url, headers]
+      properties:
+        method: { type: string, enum: [PUT] }
+        url: { type: string }
+        headers:
+          type: object
+          additionalProperties: { type: string }
+    AttachmentUploadResponse:
+      type: object
+      required: [attachment, upload]
+      properties:
+        attachment: { $ref: "#/components/schemas/Attachment" }
+        upload: { $ref: "#/components/schemas/UploadTarget" }
+    TaskEventKind:
+      type: string
+      enum: [CREATED, STATUS, UPDATED, ASSIGNEE_ADDED, ASSIGNEE_REMOVED, LABEL_ADDED, LABEL_REMOVED, OWNER_ADDED, OWNER_REMOVED,
+             CHECKLIST_ADDED, CHECKLIST_CHECKED, CHECKLIST_UNCHECKED, CHECKLIST_RENAMED, CHECKLIST_ASSIGNED, CHECKLIST_UNASSIGNED, CHECKLIST_REMOVED,
+             COMMENTED, ATTACHMENT_ADDED, ATTACHMENT_REMOVED, SUBTASK_ADDED]
+    TaskEvent:
+      type: object
+      required: [id, kind, field, from, to, subject, actor, createdAt]
+      properties:
+        id: { type: string }
+        kind: { $ref: "#/components/schemas/TaskEventKind" }
+        field: { type: [string, "null"], description: "For UPDATED: title, description, priority, client, startDate, endDate, dueDate" }
+        from: { type: [string, "null"] }
+        to: { type: [string, "null"] }
+        subject: { type: [string, "null"], description: "Person, label, checklist item, file or subtask the event is about" }
+        actor:
+          description: null when the person is no longer a member ("a former member")
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        createdAt: { type: string, format: date-time }
+    StatusStage:
+      type: object
+      required: [status, enteredAt, leftAt]
+      properties:
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        enteredAt: { type: string, format: date-time }
+        leftAt: { type: [string, "null"], format: date-time }
+    TaskHistory:
+      type: object
+      required: [events, stages]
+      properties:
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/TaskEvent" }
+        stages:
+          type: array
+          items: { $ref: "#/components/schemas/StatusStage" }
+    Client:
+      type: object
+      required: [id, name, email, phone, color, notes, taskCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        color: { $ref: "#/components/schemas/LabelColor" }
+        notes: { type: [string, "null"] }
+        taskCount: { type: integer }
+    ClientList:
+      type: object
+      required: [clients]
+      properties:
+        clients:
+          type: array
+          items: { $ref: "#/components/schemas/Client" }
+    ClientResponse:
+      type: object
+      required: [client]
+      properties:
+        client: { $ref: "#/components/schemas/Client" }
+    ClientInput:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        color: { $ref: "#/components/schemas/LabelColor" }
+        notes: { type: [string, "null"] }
     FieldError:
       type: object
       required: [field, message]

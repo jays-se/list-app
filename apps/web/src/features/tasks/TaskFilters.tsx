@@ -3,7 +3,7 @@ import { Button, Checkbox, Select } from "@app/ui-kit"
 import { useId } from "react"
 import styles from "./TaskFilters.module.css"
 
-type Key = "status" | "mine" | "assigneeId" | "labelId"
+type Key = "status" | "mine" | "assigneeId" | "labelId" | "clientId"
 
 /**
  * The URL is the source of filter intent; the worker only supplies options.
@@ -20,10 +20,15 @@ export function TaskFilters(props: {
   const { filters, search, onChange, onClear } = props
   const value = (key: Key) => search.get(key) ?? ""
   const mine = value("mine") === "true"
-  const active = (["status", "mine", "assigneeId", "labelId"] as const).some(
-    (k) => value(k)
-  )
-  const ids = { status: useId(), assignee: useId(), label: useId() }
+  const active = (
+    ["status", "mine", "assigneeId", "labelId", "clientId"] as const
+  ).some((k) => value(k))
+  const ids = {
+    status: useId(),
+    assignee: useId(),
+    label: useId(),
+    client: useId(),
+  }
   return (
     <section
       key={search.toString()}
@@ -76,6 +81,23 @@ export function TaskFilters(props: {
           onChange={(e) => onChange("labelId", e.target.value)}
         >
           {filters.labelOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </span>
+      <span className={styles.item}>
+        <label htmlFor={ids.client} className={styles.label}>
+          Client
+        </label>
+        <Select
+          id={ids.client}
+          size="small"
+          defaultValue={value("clientId")}
+          onChange={(e) => onChange("clientId", e.target.value)}
+        >
+          {filters.clientOptions.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>

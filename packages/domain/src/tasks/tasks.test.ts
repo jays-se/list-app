@@ -55,9 +55,21 @@ function summary(over: Partial<TaskSummary> = {}): TaskSummary {
     createdBy: person("u1", "Ada Lovelace"),
     version: 1,
     updatedAt: "2026-09-30T08:00:00Z",
+    client: null,
+    parent: null,
+    counts: {
+      subtasks: 0,
+      subtasksDone: 0,
+      checklist: 0,
+      checklistDone: 0,
+      comments: 0,
+      attachments: 0,
+    },
     ...over,
   }
 }
+const noClients = { clients: [] }
+const NOW = Date.parse("2026-09-30T12:00:00Z")
 
 describe("dates", () => {
   it("computes whole days across month and DST boundaries", () => {
@@ -121,6 +133,7 @@ describe("toTaskListVM", () => {
       normalizeFilter({}),
       members,
       [],
+      noClients,
       TODAY,
       "en-GB"
     )
@@ -140,12 +153,21 @@ describe("toTaskListVM", () => {
   })
 
   it("explains an empty result differently with filters", () => {
-    const none = toTaskListVM([], normalizeFilter({}), members, [], TODAY, "en")
+    const none = toTaskListVM(
+      [],
+      normalizeFilter({}),
+      members,
+      [],
+      noClients,
+      TODAY,
+      "en"
+    )
     const filtered = toTaskListVM(
       [],
       normalizeFilter({ status: "DONE", mine: "true" }),
       members,
       [],
+      noClients,
       TODAY,
       "en"
     )
@@ -178,6 +200,7 @@ describe("toTaskListVM", () => {
       normalizeFilter({}),
       members,
       [],
+      noClients,
       TODAY,
       "en-GB"
     )
@@ -201,6 +224,7 @@ describe("normalizeFilter", () => {
       mine: true,
       assigneeId: "",
       labelId: "l1",
+      clientId: "",
     })
   })
 })
@@ -222,11 +246,17 @@ const task: Task = {
   updatedAt: "2026-09-30T10:00:00Z",
   version: 3,
   viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+  client: null,
+  parent: null,
+  subtasks: [],
+  checklist: [],
+  comments: [],
+  attachments: [],
 }
 
 describe("detail and diff", () => {
   it("builds a detail view model with mode and owner candidates", () => {
-    const vm = toTaskDetailVM(task, members, [], TODAY, "en-GB")
+    const vm = toTaskDetailVM(task, members, [], noClients, TODAY, NOW, "en-GB")
     expect(vm.mode).toBe("manage")
     expect(vm.ownerCandidates.map((p) => p.id)).toEqual(["u2"])
     expect(vm.createdText).toBe("Created by Ada Lovelace on 30 Sept 2026")
@@ -235,7 +265,9 @@ describe("detail and diff", () => {
         { ...task, viewer: { ...task.viewer, canManage: false } },
         members,
         [],
+        noClients,
         TODAY,
+        NOW,
         "en"
       ).mode
     ).toBe("view")

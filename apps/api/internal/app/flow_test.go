@@ -8,6 +8,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -30,12 +31,19 @@ func newServer(t *testing.T) string {
 	pool := testdb.Pool(t)
 	srv := httptest.NewUnstartedServer(nil)
 	cfg, err := config.Load(func(k string) string {
-		return map[string]string{"APP_ENV": "test", "PUBLIC_BASE_URL": "http://" + srv.Listener.Addr().String()}[k]
+		return map[string]string{"APP_ENV": "test", "PUBLIC_BASE_URL": "http://" + srv.Listener.Addr().String(), "BLOB_DIR": t.TempDir()}[k]
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, _ := app.New(cfg, app.Options{Pool: pool, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), StartedAt: time.Now()})
+	var out io.Writer = io.Discard
+	if os.Getenv("TEST_LOG") != "" { // TEST_LOG=1 shows server logs
+		out = os.Stderr
+	}
+	h, _, err := app.New(cfg, app.Options{Pool: pool, Log: slog.New(slog.NewTextHandler(out, nil)), StartedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	srv.Config.Handler = h
 	srv.Start()
 	t.Cleanup(srv.Close)

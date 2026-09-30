@@ -3,6 +3,7 @@ import type {
   ActionInput,
   ActionKey,
   ActionResult,
+  UploadProgress,
   ViewData,
   ViewKey,
   ViewParams,
@@ -21,6 +22,17 @@ export interface DomainContext {
    * Never call `client.clearAll()` directly — it would orphan live views.
    */
   resetData: () => void
+  /**
+   * PUTs a file to a presigned target, reporting progress 0–100. The worker
+   * implements it with XHR (fetch has no upload progress); tests fake it.
+   */
+  upload: (
+    target: { method: string; url: string; headers: Record<string, string> },
+    file: Blob,
+    onProgress: (percent: number) => void
+  ) => Promise<void>
+  /** Pushes an upload progress event to the main thread. */
+  notify: (progress: UploadProgress) => void
 }
 
 /**

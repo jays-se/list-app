@@ -7,6 +7,7 @@ import {
   protocolError,
   stableHash,
   type ToMain,
+  type UploadProgress,
   type ViewData,
   type ViewKey,
   type ViewParams,
@@ -91,6 +92,7 @@ export class Bridge {
   private readonly pending = new Map<number, Pending>()
   private readonly statusListeners = new Set<() => void>()
   private readonly sessionListeners = new Set<() => void>()
+  private readonly uploadListeners = new Set<(p: UploadProgress) => void>()
   private readonly timeoutMs: number
   private readonly maxRestarts: number
   private readonly offMessage: () => void
@@ -182,6 +184,12 @@ export class Bridge {
     return () => this.sessionListeners.delete(listener)
   }
 
+  /** Upload progress pushed by the worker (topic "upload.progress"). */
+  onUploadProgress(listener: (p: UploadProgress) => void): () => void {
+    this.uploadListeners.add(listener)
+    return () => this.uploadListeners.delete(listener)
+  }
+
   dispose(): void {
     this.offMessage()
     this.rejectPending("The bridge was stopped")
@@ -245,6 +253,9 @@ export class Bridge {
       }
       case "session.expired":
         for (const listener of [...this.sessionListeners]) listener()
+        return
+      case "upload.progress":
+        for (const listener of [...this.uploadListeners]) listener(message.data)
         return
       case "fatal":
         return this.onFatal(message.data.message)

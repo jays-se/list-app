@@ -1,12 +1,16 @@
 import type { MembersVM, SessionVM, WorkspaceRefVM } from "./views/session.ts"
 import type { SystemInfoVM } from "./views/system.ts"
 import type {
+  ClientDetailVM,
+  ClientDraft,
+  ClientsVM,
   LabelColorKey,
   LabelsVM,
   LabelVM,
   TaskDetailVM,
   TaskDraft,
   TaskFormOptionsVM,
+  TaskHistoryVM,
   TaskListParams,
   TaskListVM,
 } from "./views/tasks.ts"
@@ -27,6 +31,9 @@ export interface ViewMap {
     data: TaskFormOptionsVM
   }
   "labels.list": { params: Record<string, never>; data: LabelsVM }
+  "tasks.history": { params: { taskId: string }; data: TaskHistoryVM }
+  "clients.list": { params: Record<string, never>; data: ClientsVM }
+  "clients.detail": { params: { clientId: string }; data: ClientDetailVM }
 }
 
 type NoInput = Record<string, never>
@@ -55,6 +62,52 @@ export interface ActionMap {
     result: LabelVM
   }
   "labels.delete": { input: { labelId: string }; result: null }
+  "tasks.addSubtask": {
+    input: { parentId: string; title: string }
+    result: { id: string }
+  }
+  "checklist.add": {
+    input: { taskId: string; title: string; assigneeId: string }
+    result: null
+  }
+  /** Optimistic: the detail view updates before the API answers. */
+  "checklist.update": {
+    input: {
+      taskId: string
+      itemId: string
+      done?: boolean
+      title?: string
+      assigneeId?: string
+    }
+    result: null
+  }
+  "checklist.delete": {
+    input: { taskId: string; itemId: string }
+    result: null
+  }
+  /** Only mentions whose "@Name" is still in the body are sent. */
+  "comments.add": {
+    input: { taskId: string; body: string; mentionIds: string[] }
+    result: null
+  }
+  /** Files are structured-cloneable; the worker reads and uploads them. */
+  "attachments.upload": {
+    input: { taskId: string; files: File[] }
+    result: {
+      uploaded: number
+      failed: { filename: string; message: string }[]
+    }
+  }
+  "attachments.delete": {
+    input: { taskId: string; attachmentId: string }
+    result: null
+  }
+  "clients.create": { input: ClientDraft; result: { id: string } }
+  "clients.update": {
+    input: { clientId: string; draft: ClientDraft }
+    result: null
+  }
+  "clients.delete": { input: { clientId: string }; result: null }
 }
 
 export type ViewKey = keyof ViewMap

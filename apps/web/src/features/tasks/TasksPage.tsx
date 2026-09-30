@@ -8,7 +8,13 @@ import { TaskFilters } from "./TaskFilters.tsx"
 import { TaskGroups } from "./TaskGroups.tsx"
 import styles from "./TasksPage.module.css"
 
-const FILTER_KEYS = ["status", "mine", "assigneeId", "labelId"] as const
+const FILTER_KEYS = [
+  "status",
+  "mine",
+  "assigneeId",
+  "labelId",
+  "clientId",
+] as const
 
 /** URL search params → view params (the worker validates the values). */
 export function listParams(search: URLSearchParams): TaskListParams {

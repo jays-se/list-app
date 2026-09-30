@@ -1,5 +1,7 @@
 import {
   type ApiClient,
+  type ClientList,
+  decodeClientList,
   decodeLabelList,
   decodeTaskList,
   decodeTaskResponse,
@@ -19,6 +21,11 @@ export const taskKeys = {
 }
 
 export const labelKeys = { all: ["labels"] as const }
+export const clientKeys = {
+  all: ["clients"] as const,
+  list: ["clients", "list"] as const,
+  detail: (id: string) => ["clients", "detail", id] as const,
+}
 
 /** URL params → a normalized filter (invalid values dropped). */
 export interface TaskFilter {
@@ -26,6 +33,7 @@ export interface TaskFilter {
   mine: boolean
   assigneeId: string
   labelId: string
+  clientId: string
 }
 
 export function normalizeFilter(p: TaskListParams): TaskFilter {
@@ -35,6 +43,7 @@ export function normalizeFilter(p: TaskListParams): TaskFilter {
     mine,
     assigneeId: mine ? "" : (p.assigneeId ?? ""),
     labelId: p.labelId ?? "",
+    clientId: p.clientId ?? "",
   }
 }
 
@@ -44,6 +53,7 @@ function toQueryString(f: TaskFilter): string {
   if (f.mine) q.set("mine", "true")
   if (f.assigneeId) q.set("assigneeId", f.assigneeId)
   if (f.labelId) q.set("labelId", f.labelId)
+  if (f.clientId) q.set("clientId", f.clientId)
   const s = q.toString()
   return s ? `?${s}` : ""
 }
@@ -87,5 +97,15 @@ export function labelsQuery(api: ApiClient): QueryOptions<LabelList> {
     ttl: 0,
     fetcher: async ({ signal }) =>
       decodeLabelList(await api.get("/labels", { signal })),
+  }
+}
+
+/** Teammates add clients too: show cached, revalidate on open. */
+export function clientsQuery(api: ApiClient): QueryOptions<ClientList> {
+  return {
+    key: clientKeys.list,
+    ttl: 0,
+    fetcher: async ({ signal }) =>
+      decodeClientList(await api.get("/clients", { signal })),
   }
 }

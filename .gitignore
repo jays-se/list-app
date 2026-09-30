@@ -8,3 +8,4 @@ coverage/
 test-results/
 playwright-report/
 apps/api/bin/
+apps/api/data/

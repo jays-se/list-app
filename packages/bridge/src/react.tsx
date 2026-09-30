@@ -6,6 +6,7 @@ import {
   type ProtocolError,
   protocolError,
   stableHash,
+  type UploadProgress,
   type ViewData,
   type ViewKey,
   type ViewParams,
@@ -125,4 +126,39 @@ export function useBridgeStatus(): BridgeStatus {
     bridge.getStatus,
     bridge.getStatus
   )
+}
+
+/**
+ * Live uploads for one task, from worker pushes. Finished uploads disappear
+ * after a moment; failures stay until the next upload starts. UI state only.
+ */
+export function useUploadProgress(taskId: string): UploadProgress[] {
+  const bridge = useBridge()
+  const [uploads, setUploads] = useState<UploadProgress[]>([])
+  useEffect(() => {
+    const timers = new Set<ReturnType<typeof setTimeout>>()
+    const off = bridge.onUploadProgress((p) => {
+      if (p.taskId !== taskId) return
+      setUploads((list) => {
+        const rest = list.filter(
+          (u) =>
+            u.uploadId !== p.uploadId &&
+            !(p.state === "uploading" && u.state === "failed")
+        )
+        return [...rest, p]
+      })
+      if (p.state === "done") {
+        const timer = setTimeout(() => {
+          timers.delete(timer)
+          setUploads((list) => list.filter((u) => u.uploadId !== p.uploadId))
+        }, 1500)
+        timers.add(timer)
+      }
+    })
+    return () => {
+      off()
+      for (const t of timers) clearTimeout(t)
+    }
+  }, [bridge, taskId])
+  return uploads
 }

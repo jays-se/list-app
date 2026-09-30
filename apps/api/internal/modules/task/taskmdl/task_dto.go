@@ -17,6 +17,7 @@ func ToTaskSummaryRsp(t Task) TaskSummaryRsp {
 		ID: t.ID, Title: t.Title, Status: t.Status, Priority: t.Priority,
 		StartDate: t.StartDate.Format(DateLayout), EndDate: t.EndDate.Format(DateLayout), DueDate: dateOrNil(t.DueDate),
 		Assignees: t.Assignees, Labels: t.Labels, CreatedBy: t.CreatedBy, Version: t.Version, UpdatedAt: t.UpdatedAt,
+		Client: t.Client, Parent: t.Parent, Counts: t.Counts,
 	}
 }
 
@@ -34,5 +35,15 @@ func ToTaskRsp(t Task, v Viewer) TaskRsp {
 		StartDate: t.StartDate.Format(DateLayout), EndDate: t.EndDate.Format(DateLayout), DueDate: dateOrNil(t.DueDate),
 		Assignees: t.Assignees, Owners: t.Owners, Labels: t.Labels, CreatedBy: t.CreatedBy,
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt, Version: t.Version, Viewer: v,
+		Client: t.Client, Parent: t.Parent,
+		Subtasks: nonNil(t.Subtasks), Checklist: nonNil(t.Checklist), Comments: nonNil(t.Comments), Attachments: nonNil(t.Attachments),
 	}
+}
+
+// nonNil keeps empty lists as [] (not null) in JSON.
+func nonNil[T any](xs []T) []T {
+	if xs == nil {
+		return []T{}
+	}
+	return xs
 }
