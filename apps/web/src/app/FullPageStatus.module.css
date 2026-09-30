@@ -1,0 +1,21 @@
+.center {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: var(--spacingM);
+  padding: var(--spacingL);
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fontSizeBase500);
+  line-height: var(--lineHeightBase500);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.text {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}

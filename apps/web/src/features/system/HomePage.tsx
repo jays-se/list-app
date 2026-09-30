@@ -8,13 +8,21 @@ import styles from "./HomePage.module.css"
  */
 export function HomePage() {
   const info = useView("system.info", {})
+  const session = useView("session.current", {})
+  const firstName = session.data?.user?.firstName
+  const workspace = session.data?.activeWorkspace
 
   return (
     <section className={styles.page} aria-labelledby="home-title">
       <h1 id="home-title" className={styles.title}>
-        Welcome
+        {firstName ? `Hi, ${firstName}` : "Welcome"}
       </h1>
       <p className={styles.lead}>
+        {workspace ? (
+          <>
+            You're in <strong>{workspace.name}</strong>.{" "}
+          </>
+        ) : null}
         Tasks, approvals, docs and quick capture arrive in the next sprints.
         Below is a live check of the data plane.
       </p>

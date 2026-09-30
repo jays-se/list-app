@@ -1,0 +1,116 @@
+.page {
+  display: grid;
+  gap: var(--spacingXL);
+  max-width: 760px;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.lead,
+.text,
+.hint {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}
+.hint {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}
+
+.card {
+  display: grid;
+  gap: var(--spacingM);
+  padding: var(--spacingXL);
+  border-radius: var(--borderRadiusXLarge);
+  background: var(--colorNeutralBackground1);
+  box-shadow: var(--shadow4);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacingS);
+  margin: 0;
+  font-size: var(--fontSizeBase500);
+  line-height: var(--lineHeightBase500);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.count {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase300);
+  font-weight: var(--fontWeightRegular);
+}
+
+.inviteRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacingS);
+}
+
+.code {
+  padding: var(--spacingSNudge) var(--spacingMNudge);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground3);
+  font-family: var(--fontFamilyMonospace);
+  font-size: var(--fontSizeBase300);
+  letter-spacing: 0.04em;
+}
+
+.members {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingM);
+  padding: var(--spacingS) 0;
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+}
+.member:first-child {
+  border-top: none;
+}
+
+.who {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: var(--fontWeightSemibold);
+}
+
+.you,
+.meta {
+  color: var(--colorNeutralForeground3);
+  font-weight: var(--fontWeightRegular);
+}
+.meta {
+  overflow: hidden;
+  font-size: var(--fontSizeBase200);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--spacingXL);
+}
+
+.error {
+  margin: 0;
+  color: var(--colorStatusDangerForeground1);
+}

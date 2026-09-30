@@ -75,3 +75,17 @@ A write:
 | Inline backend (tests) | `packages/worker/src/inline-backend.ts` |
 | Web wiring | `apps/web/src/app/{data-plane.ts,router.tsx}`, `apps/web/src/worker/data-plane.worker.ts` |
 | API | `apps/api/cmd/api/main.go`, `apps/api/internal/{apiserver,db,modules}` |
+
+## Sign-in and sessions (Sprint 1)
+```
+Login page ──link──► GET /api/v1/auth/google/login?returnTo=…      (sets signed oauth_flow cookie)
+          ──302───► Google (PKCE S256 + nonce)  |  dev provider form (dev/test only)
+          ──302───► GET /api/v1/auth/google/callback?code&state   (state ↔ cookie, code exchange,
+                                                                    ID token verified, user upserted)
+          ──302───► returnTo, with the HttpOnly `sid` cookie       (only its SHA-256 is stored)
+Worker:   session.current view = GET /auth/me (401 → "anonymous") + GET /workspaces
+React:    RequireSession guard → /login?returnTo=… | /onboarding | page
+```
+- **CSRF:** unsafe `/api/*` requests need `X-Requested-With: app` (the worker always sends it). Cross-site `Sec-Fetch-Site` and foreign `Origin` headers are rejected.
+- **Tenancy:** `RequireWorkspace` checks membership of the session's active workspace and puts `reqctx.Tenant` into the context. Services then run SQL inside `db.WithTenant`, which enforces RLS.
+- **Workspace switch, create, join and logout** call `ctx.resetData()` in the worker. All cached data is cleared and every live view refetches, so nothing from the previous tenant remains.

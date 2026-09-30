@@ -15,6 +15,12 @@ export interface DomainContext {
   client: QueryClient
   now: () => number
   locale: string
+  /**
+   * Drop all cached data and refetch every live view (ADR-0019). Call after
+   * anything that changes the tenant: workspace create/join/switch, logout.
+   * Never call `client.clearAll()` directly — it would orphan live views.
+   */
+  resetData: () => void
 }
 
 /**

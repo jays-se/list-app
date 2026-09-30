@@ -2,19 +2,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacingS);
+  width: 172px;
 }
 
 .label {
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
-}
-
-.select {
-  min-height: 28px;
-  padding: 0 var(--spacingS);
-  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
-  border-radius: var(--borderRadiusMedium);
-  background: var(--colorNeutralBackground1);
-  color: var(--colorNeutralForeground1);
-  font: inherit;
 }

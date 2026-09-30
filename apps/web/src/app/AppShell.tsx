@@ -1,6 +1,7 @@
-import { useBridgeStatus } from "@app/bridge"
-import { cx } from "@app/ui-kit"
+import { useAction, useBridgeStatus, useView } from "@app/bridge"
+import { Avatar, Button, cx } from "@app/ui-kit"
 import { NavLink, Outlet } from "react-router"
+import { WorkspaceSwitcher } from "../features/workspace/WorkspaceSwitcher.tsx"
 import styles from "./AppShell.module.css"
 import { ThemeSwitcher } from "./ThemeSwitcher.tsx"
 
@@ -11,9 +12,13 @@ export function AppShell() {
         <NavLink to="/" className={cx(styles.brand)}>
           List
         </NavLink>
+        <WorkspaceSwitcher />
         <nav aria-label="Primary" className={styles.nav}>
           <NavLink to="/" end className={navClass}>
             Home
+          </NavLink>
+          <NavLink to="/settings/workspace" className={navClass}>
+            Settings
           </NavLink>
           {import.meta.env.DEV && (
             <NavLink to="/_design" className={navClass}>
@@ -22,6 +27,7 @@ export function AppShell() {
           )}
         </nav>
         <ThemeSwitcher />
+        <UserMenu />
       </header>
       <WorkerStatusBanner />
       <main className={styles.main}>
@@ -33,6 +39,28 @@ export function AppShell() {
 
 function navClass({ isActive }: { isActive: boolean }) {
   return cx(styles.navLink, isActive && styles.active)
+}
+
+function UserMenu() {
+  const session = useView("session.current", {})
+  const logout = useAction("auth.logout")
+  const user = session.data?.user
+  if (!user) return null
+  return (
+    <div className={styles.user}>
+      <Avatar name={user.name} image={user.image ?? undefined} size={24} />
+      <span className={styles.userName}>{user.name}</span>
+      <Button
+        appearance="subtle"
+        size="small"
+        disabled={logout.pending}
+        // The session guard redirects to /login once the worker reports "anonymous".
+        onClick={() => logout.run({}).catch(() => {})}
+      >
+        Sign out
+      </Button>
+    </div>
+  )
 }
 
 function WorkerStatusBanner() {

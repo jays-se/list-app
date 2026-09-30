@@ -136,8 +136,8 @@ func TestTenantIsolation(t *testing.T) {
 	mustExec(t, pool, "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "+schema+" TO "+role)
 
 	var alice, bob, wsA, wsB string
-	mustScan(t, pool, `INSERT INTO users (email, name) VALUES ('a@x.io','Alice') RETURNING id`, &alice)
-	mustScan(t, pool, `INSERT INTO users (email, name) VALUES ('b@x.io','Bob') RETURNING id`, &bob)
+	mustScan(t, pool, `INSERT INTO users (email, name, auth_provider, auth_subject) VALUES ('a@x.io','Alice','dev','a@x.io') RETURNING id`, &alice)
+	mustScan(t, pool, `INSERT INTO users (email, name, auth_provider, auth_subject) VALUES ('b@x.io','Bob','dev','b@x.io') RETURNING id`, &bob)
 	mustScan(t, pool, `INSERT INTO workspaces (name, invite_code, created_by) VALUES ('A','code-a',$1) RETURNING id`, &wsA, alice)
 	mustScan(t, pool, `INSERT INTO workspaces (name, invite_code, created_by) VALUES ('B','code-b',$1) RETURNING id`, &wsB, bob)
 	mustExec(t, pool, `INSERT INTO memberships (workspace_id, user_id, role) VALUES ($1,$2,'OWNER'),($3,$4,'OWNER')`, wsA, alice, wsB, bob)

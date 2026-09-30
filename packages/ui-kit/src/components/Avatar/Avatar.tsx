@@ -4,7 +4,7 @@ import styles from "./Avatar.module.css"
 export interface AvatarProps {
   /** Accessible name; initials are derived from it when there's no image. */
   name: string
-  image?: string
+  image?: string | undefined
   size?: 20 | 24 | 32 | 40 | 48
   className?: string
 }

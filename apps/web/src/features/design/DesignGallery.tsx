@@ -1,11 +1,17 @@
+import { Link } from "react-router"
+import { ThemeSwitcher } from "../../app/ThemeSwitcher.tsx"
 import { ComponentGallery } from "./ComponentGallery.tsx"
 import styles from "./DesignGallery.module.css"
 import { TokenGallery } from "./TokenGallery.tsx"
 
-/** Dev-only living reference for @app/ui-kit (E0-S5). */
+/** Dev-only living reference for @app/ui-kit (E0-S5). Public: no sign-in. */
 export function DesignGallery() {
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
+      <nav className={styles.topbar} aria-label="Design system">
+        <Link to="/">← Back to the app</Link>
+        <ThemeSwitcher />
+      </nav>
       <header>
         <h1 className={styles.title}>Design system</h1>
         <p className={styles.lead}>
@@ -16,6 +22,6 @@ export function DesignGallery() {
       </header>
       <ComponentGallery />
       <TokenGallery />
-    </div>
+    </main>
   )
 }

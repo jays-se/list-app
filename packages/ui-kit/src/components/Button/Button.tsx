@@ -1,4 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react"
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  ReactNode,
+} from "react"
 import { cx } from "../../cx.ts"
 import styles from "./Button.module.css"
 
@@ -61,4 +65,53 @@ export interface IconButtonProps
 
 export function IconButton(props: IconButtonProps) {
   return <Button {...props} />
+}
+
+export interface ButtonStyleOptions {
+  appearance?: ButtonAppearance | undefined
+  size?: ButtonSize | undefined
+  shape?: ButtonShape | undefined
+}
+
+/** Button classes for other elements, e.g. a router <Link> styled as a button. */
+export function buttonClass({
+  appearance = "secondary",
+  size = "medium",
+  shape = "rounded",
+}: ButtonStyleOptions = {}): string {
+  return cx(
+    styles.root,
+    styles[appearance],
+    styles[size],
+    styles[shape],
+    styles.link
+  )
+}
+
+export interface LinkButtonProps
+  extends AnchorHTMLAttributes<HTMLAnchorElement>,
+    ButtonStyleOptions {
+  href: string
+  icon?: ReactNode
+}
+
+/** An <a> that looks like a Button — for full-page navigations. */
+export function LinkButton({
+  appearance,
+  size,
+  shape,
+  icon,
+  className,
+  children,
+  ...rest
+}: LinkButtonProps) {
+  return (
+    <a
+      {...rest}
+      className={cx(buttonClass({ appearance, size, shape }), className)}
+    >
+      {icon ? <span className={styles.icon}>{icon}</span> : null}
+      {children}
+    </a>
+  )
 }

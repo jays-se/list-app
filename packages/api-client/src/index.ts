@@ -5,3 +5,4 @@ export {
   createApiClient,
   type RequestOptions,
 } from "./client.ts"
+export * from "./generated.ts"

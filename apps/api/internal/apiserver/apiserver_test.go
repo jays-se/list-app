@@ -9,14 +9,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 	"time"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/intellicars/list-app/apps/api/internal/apiserver"
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemhdlr"
@@ -32,7 +27,7 @@ func (f fakeDB) Ping(context.Context) error { return f.err }
 func newTestHandler(db systemsvc.Pinger, extra ...apiserver.RouteRegistrar) (http.Handler, *apiserver.Router) {
 	started := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
 	system := systemhdlr.NewSystemHdlr(systemsvc.NewSystemSvc("list-api", "1.2.3", started, db))
-	return apiserver.NewHandler(quiet, append([]apiserver.RouteRegistrar{system}, extra...)...)
+	return apiserver.NewHandler(quiet, append([]apiserver.RouteRegistrar{system}, extra...))
 }
 
 func do(t *testing.T, h http.Handler, method, path string) *httptest.ResponseRecorder {
@@ -169,34 +164,64 @@ func TestGracefulShutdown(t *testing.T) {
 	}
 }
 
-// TestContractMatchesOpenAPI keeps api/openapi.yaml and the registered routes
-// identical (ADR-0002, contract-first).
-func TestContractMatchesOpenAPI(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "api", "openapi.yaml"))
-	if err != nil {
-		t.Fatal(err)
+func TestCSRF(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) })
+	h := apiserver.CSRF("http://localhost:5199", func(r *http.Request) bool { return r.URL.Path == "/api/v1/exempt" })(ok)
+	cases := []struct {
+		name, method, path string
+		headers            map[string]string
+		want               int
+	}{
+		{"safe method passes", "GET", "/api/v1/x", nil, 204},
+		{"non-api path passes", "POST", "/healthz", nil, 204},
+		{"exempt path passes", "POST", "/api/v1/exempt", nil, 204},
+		{"missing header", "POST", "/api/v1/x", nil, 403},
+		{"header ok, same origin", "POST", "/api/v1/x", map[string]string{"X-Requested-With": "app", "Origin": "http://localhost:5199"}, 204},
+		{"header ok, no origin", "DELETE", "/api/v1/x", map[string]string{"X-Requested-With": "app"}, 204},
+		{"foreign origin", "POST", "/api/v1/x", map[string]string{"X-Requested-With": "app", "Origin": "https://evil.example"}, 403},
+		{"cross-site fetch", "POST", "/api/v1/x", map[string]string{"X-Requested-With": "app", "Sec-Fetch-Site": "cross-site"}, 403},
 	}
-	var spec struct {
-		Paths map[string]map[string]any `yaml:"paths"`
-	}
-	if err := yaml.Unmarshal(raw, &spec); err != nil {
-		t.Fatal(err)
-	}
-	var documented []string
-	for path, ops := range spec.Paths {
-		for method := range ops {
-			switch method {
-			case "get", "post", "put", "patch", "delete":
-				documented = append(documented, strings.ToUpper(method)+" "+path)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequest(c.method, c.path, nil)
+			for k, v := range c.headers {
+				req.Header.Set(k, v)
 			}
-		}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != c.want {
+				t.Fatalf("got %d, want %d (%s)", rec.Code, c.want, rec.Body.String())
+			}
+		})
 	}
-	sort.Strings(documented)
+}
 
-	_, router := newTestHandler(nil)
-	registered := router.Routes()
-	if strings.Join(documented, "\n") != strings.Join(registered, "\n") {
-		t.Fatalf("OpenAPI and routes differ\nopenapi:\n  %s\nroutes:\n  %s",
-			strings.Join(documented, "\n  "), strings.Join(registered, "\n  "))
+func TestDecodeJSON(t *testing.T) {
+	var dst struct {
+		Name string `json:"name"`
+	}
+	cases := []struct {
+		name, contentType, body string
+		ok                      bool
+		status                  int
+	}{
+		{"valid", "application/json", `{"name":"a"}`, true, 0},
+		{"valid with charset", "application/json; charset=utf-8", `{"name":"a"}`, true, 0},
+		{"wrong media type", "text/plain", `{"name":"a"}`, false, 415},
+		{"malformed", "application/json", `{"name":`, false, 400},
+		{"wrong type", "application/json", `{"name":1}`, false, 400},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/", strings.NewReader(c.body))
+			req.Header.Set("Content-Type", c.contentType)
+			rec := httptest.NewRecorder()
+			if got := apiserver.DecodeJSON(rec, req, &dst); got != c.ok {
+				t.Fatalf("ok = %v, want %v", got, c.ok)
+			}
+			if !c.ok && rec.Code != c.status {
+				t.Fatalf("status = %d, want %d", rec.Code, c.status)
+			}
+		})
 	}
 }

@@ -18,4 +18,9 @@ The source of truth is the migrations in `resources/db/migrations/`. Update this
 | `sessions` | Server-side sessions (ADR-0008) | `id_hash bytea` (SHA-256 of the cookie token), `user_id`, `active_workspace_id`, `expires_at`, `revoked_at` |
 | `schema_migrations` | Migrator bookkeeping | `version`, `name`, `applied_at` |
 
+## Migration 0002: auth identities (Sprint 1, ADR-0017)
+- `users.auth_provider` and `users.auth_subject` are required. Together they are unique (`users_identity_key`), and they identify a user: `google` + the ID-token `sub`, or `dev` + email.
+- `users.email` is no longer unique; it is profile data, indexed through `lower(email)`.
+- `sessions_user_created_idx` supports "reactivate the last workspace I used" when a new session starts.
+
 Feature tables (tasks, requests, docs, clients, labels, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.

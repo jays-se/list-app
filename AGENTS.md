@@ -16,7 +16,12 @@ This is a team tool for tasks, change-request approvals, docs, clients, labels, 
 
 ## Status
 
-Sprint 0 is complete (2026-09-30). The worker data plane, query engine, bridge, design-system foundations, Go API skeleton and migrations are in place, and a `system.info` view runs end to end. Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 1 (sign-in and workspaces).
+Sprint 1 is complete (2026-09-30).
+- **Sign-in:** Google OIDC, or the dev identity provider, with server sessions.
+- **Workspaces:** create, join by invite code, switch, members, rotate the invite code.
+- **Plumbing:** codegen from OpenAPI, and a local compose stack.
+
+Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 2 (tasks).
 
 ## Architecture in one screen
 
@@ -94,10 +99,11 @@ After you add or change a rule, run `node scripts/sync-agents.mjs`. CI runs it w
 | `cd apps/api && go run ./cmd/api` | API server; `… migrate up|down [N]|status` |
 | `pnpm check` | lint, typecheck, boundaries, agents, tokens, unit tests |
 | `pnpm test:coverage` | unit tests with the 80% gate |
-| `pnpm test:e2e` | Playwright (starts API :18080 and web :5199) |
+| `pnpm test:e2e` | Playwright against the real API and DB (needs `E2E_DATABASE_URL`; starts API :18080 and web :5199) |
 | `cd apps/api && go test ./...` | API tests (`TEST_DATABASE_URL` enables the Postgres tests) |
+| `pnpm gen:api` | regenerate TS types and decoders from `api/openapi.yaml` (ADR-0018) |
 | `pnpm tokens` / `pnpm sync:agents` | regenerate tokens.css / agent adapters |
-| `pnpm stack:up` | local Postgres, MinIO, API, fake OIDC (after E0-S4) |
+| `pnpm stack:up` / `stack:full` / `stack:down` | Docker Compose: Postgres, MinIO, API with the dev identity provider (`full` adds Caddy serving the build) |
 
 See `docs/local-setup.md`.
 

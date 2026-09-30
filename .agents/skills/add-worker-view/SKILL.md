@@ -22,7 +22,7 @@ Reference implementation: `system.info`.
 4. **Query** in `packages/domain/src/<feature>/<feature>.queries.ts`:
    - The DTO interface mirrors the OpenAPI schema.
    - Key factory: `["<feature>", ...]`.
-   - `QueryOptions` needs a `fetcher` that passes `{ signal }` through to `ctx.api.get`.
+   - `QueryOptions` needs a `fetcher` that passes `{ signal }` through to `ctx.api.get` and **decodes the response with the generated `decode<Schema>`** from `@app/api-client`. Run `pnpm gen:api` after changing the spec.
    - Set `ttl`. Set `refetchInterval` only if the reference app polls this screen (15 s lists, 10 s details, 20 s inbox).
 5. **View model** in `<feature>.vm.ts`: a pure `to<Name>VM(dto, now, locale)`. Pass time and locale in as arguments; don't read them inside.
 6. **View definition** in `<feature>.views.ts`:

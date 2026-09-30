@@ -21,8 +21,14 @@
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:agents": "node scripts/sync-agents.mjs --check",
     "sync:agents": "node scripts/sync-agents.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm check:agents && pnpm check:tokens && pnpm test",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "check": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm check:agents && pnpm check:tokens && pnpm check:api && pnpm test",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "gen:api": "node scripts/gen-api.mjs",
+    "check:api": "node scripts/gen-api.mjs --check",
+    "stack:up": "docker compose -f deploy/compose.yaml up -d --build --wait db storage api",
+    "stack:full": "PUBLIC_BASE_URL=http://localhost:8088 docker compose -f deploy/compose.yaml --profile full up -d --build --wait",
+    "stack:down": "docker compose -f deploy/compose.yaml --profile full down",
+    "stack:logs": "docker compose -f deploy/compose.yaml logs -f api"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -38,6 +44,7 @@
     "jsdom": "^30.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.2",
+    "yaml": "2.9.1"
   }
 }
