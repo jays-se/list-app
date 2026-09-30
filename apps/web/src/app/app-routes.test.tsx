@@ -162,9 +162,13 @@ describe("onboarding", () => {
       target: { value: "Acme" },
     })
     fireEvent.click(create)
-    expect(await screen.findByRole("heading", { name: "Hi, Ada" })).toBeTruthy()
+    expect(
+      await screen.findByRole("heading", {
+        name: /^(Good (morning|afternoon|evening)|Welcome), Ada$/,
+      })
+    ).toBeTruthy()
+    expect(await screen.findByText("Acme", { selector: "strong" })).toBeTruthy()
     expect(router.state.location.pathname).toBe("/")
-    expect(screen.getByText("Acme", { selector: "strong" })).toBeTruthy()
   })
 
   it("shows the server's message for a bad invite code", async () => {
@@ -201,7 +205,7 @@ describe("signed in with a workspace", () => {
     expect(
       screen.getByRole("button", { name: "Generate new code" })
     ).toBeTruthy()
-    const list = await screen.findByRole("list")
+    const list = (await screen.findByText("(you)")).closest("ul") as HTMLElement
     expect(within(list).getByText("(you)")).toBeTruthy()
     expect(within(list).getByText("Owner")).toBeTruthy()
     expect(screen.getByText("1 member")).toBeTruthy()
@@ -210,12 +214,11 @@ describe("signed in with a workspace", () => {
   it("switching workspace goes through the worker and refreshes the session", async () => {
     const api = ready()
     renderApp("/", api)
-    const switcher = (await screen.findByRole("combobox", {
-      name: "Workspace",
-    })) as HTMLSelectElement
-    expect(switcher.value).toBe("w1")
+    const switcher = await screen.findByRole("combobox", { name: "Workspace" })
+    expect(switcher.textContent).toContain("Acme")
+    fireEvent.click(switcher)
     await act(async () => {
-      fireEvent.change(switcher, { target: { value: "w2" } })
+      fireEvent.click(screen.getByRole("option", { name: /Beta/ }))
     })
     expect(await screen.findByText("Beta", { selector: "strong" })).toBeTruthy()
     expect(api.calls).toContain("POST /workspaces/switch")

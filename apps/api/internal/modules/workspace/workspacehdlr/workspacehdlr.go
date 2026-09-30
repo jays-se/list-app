@@ -39,6 +39,43 @@ func (h *WorkspaceHdlr) RegisterRoutes(r *apiserver.Router) {
 	r.Handle("POST /api/v1/workspaces/switch", h.auth.RequireUser(h.switchTo))
 	r.Handle("GET /api/v1/workspaces/current/members", h.RequireWorkspace(h.members))
 	r.Handle("POST /api/v1/workspaces/current/invite-code/rotate", h.RequireWorkspace(h.rotateInvite))
+	r.Handle("POST /api/v1/workspaces/current/leave", h.RequireWorkspace(h.leave))
+	r.Handle("DELETE /api/v1/workspaces/current/members/{userId}", h.RequireWorkspace(h.removeMember))
+	r.Handle("PATCH /api/v1/workspaces/current/members/{userId}", h.RequireWorkspace(h.updateMember))
+}
+
+func tenantOf(r *http.Request) (db.Tenant, string) {
+	t, _ := reqctx.TenantFrom(r.Context())
+	return db.Tenant{WorkspaceID: t.WorkspaceID, UserID: t.UserID}, t.Role
+}
+
+func (h *WorkspaceHdlr) leave(w http.ResponseWriter, r *http.Request) {
+	t, _ := tenantOf(r)
+	if h.handleErr(w, r, "leave", h.svc.Leave(r.Context(), t)) {
+		return
+	}
+	apiserver.RespondNoContent(w)
+}
+
+func (h *WorkspaceHdlr) removeMember(w http.ResponseWriter, r *http.Request) {
+	t, role := tenantOf(r)
+	if h.handleErr(w, r, "remove_member", h.svc.RemoveMember(r.Context(), t, role, r.PathValue("userId"))) {
+		return
+	}
+	apiserver.RespondNoContent(w)
+}
+
+func (h *WorkspaceHdlr) updateMember(w http.ResponseWriter, r *http.Request) {
+	var req mdl.UpdateMemberReq
+	if !apiserver.DecodeJSON(w, r, &req) {
+		return
+	}
+	t, role := tenantOf(r)
+	m, err := h.svc.SetRole(r.Context(), t, role, r.PathValue("userId"), req.Role)
+	if h.handleErr(w, r, "update_member", err) {
+		return
+	}
+	apiserver.RespondOK(w, mdl.MemberEnvelopeRsp{Member: mdl.ToMemberRsp(m)})
 }
 
 // RequireWorkspace = RequireUser + a verified membership in the session's

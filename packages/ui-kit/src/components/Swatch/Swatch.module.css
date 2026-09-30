@@ -1,0 +1,54 @@
+.root {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  background: var(--swatch);
+}
+.dot {
+  border-radius: var(--borderRadiusCircular);
+}
+.square {
+  border-radius: var(--borderRadiusSmall);
+}
+.flag {
+  display: inline-flex;
+  flex: none;
+  color: var(--swatch);
+}
+.gray {
+  --swatch: var(--colorPaletteGrayBorderActive);
+}
+.red {
+  --swatch: var(--colorPaletteRedBorderActive);
+}
+.orange {
+  --swatch: var(--colorPaletteOrangeBorderActive);
+}
+.yellow {
+  --swatch: var(--colorPaletteYellowBorderActive);
+}
+.green {
+  --swatch: var(--colorPaletteGreenBorderActive);
+}
+.teal {
+  --swatch: var(--colorPaletteTealBorderActive);
+}
+.blue {
+  --swatch: var(--colorPaletteBlueBorderActive);
+}
+.purple {
+  --swatch: var(--colorPalettePurpleBorderActive);
+}
+.pink {
+  --swatch: var(--colorPalettePinkBorderActive);
+}
+
+@media (forced-colors: active) {
+  .root {
+    background: CanvasText;
+  }
+  .flag {
+    color: CanvasText;
+  }
+}

@@ -16,7 +16,7 @@ import (
 // as JSON aggregates (one row per task, no N+1).
 const taskSelect = `
 SELECT t.id, t.title, t.description, t.status, t.priority, t.start_date, t.end_date, t.due_date,
-       t.created_at, t.updated_at, t.version,
+       t.created_at, t.updated_at, t.version, t.source,
        json_build_object('id', cu.id, 'name', cu.name, 'image', cu.image_url),
        coalesce((SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'image', u.image_url) ORDER BY lower(u.name), u.id)
                    FROM task_assignees a JOIN users u ON u.id = a.user_id WHERE a.task_id = t.id), '[]'),
@@ -32,7 +32,8 @@ SELECT t.id, t.title, t.description, t.status, t.priority, t.start_date, t.end_d
          'checklist', (SELECT count(*) FROM checklist_items c WHERE c.task_id = t.id),
          'checklistDone', (SELECT count(*) FROM checklist_items c WHERE c.task_id = t.id AND c.done),
          'comments', (SELECT count(*) FROM comments m WHERE m.task_id = t.id),
-         'attachments', (SELECT count(*) FROM attachments f WHERE f.task_id = t.id AND f.status = 'READY'))
+         'attachments', (SELECT count(*) FROM attachments f WHERE f.task_id = t.id AND f.status = 'READY'),
+         'pendingRequests', (SELECT count(*) FROM change_requests r WHERE r.task_id = t.id AND r.status = 'PENDING'))
   FROM tasks t
   JOIN users cu ON cu.id = t.created_by
   LEFT JOIN clients cl ON cl.id = t.client_id
@@ -42,7 +43,7 @@ func scanTask(row pgx.Row) (mdl.Task, error) {
 	var t mdl.Task
 	var client, parent []byte
 	err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Status, &t.Priority, &t.StartDate, &t.EndDate, &t.DueDate,
-		&t.CreatedAt, &t.UpdatedAt, &t.Version, &t.CreatedBy, &t.Assignees, &t.Owners, &t.Labels, &client, &parent, &t.Counts)
+		&t.CreatedAt, &t.UpdatedAt, &t.Version, &t.Source, &t.CreatedBy, &t.Assignees, &t.Owners, &t.Labels, &client, &parent, &t.Counts)
 	if err != nil {
 		return t, err
 	}
@@ -111,6 +112,9 @@ func loadDetail(ctx context.Context, tx pgx.Tx, workspaceID, id string) (mdl.Tas
 		              FROM attachments f LEFT JOIN users u ON u.id = f.uploaded_by WHERE f.task_id = $1 AND f.status = 'READY'), '[]')`,
 		id).Scan(&t.Subtasks, &t.Checklist, &t.Comments, &t.Attachments); err != nil {
 		return t, fmt.Errorf("tasksvc: load detail: %w", err)
+	}
+	if t.Requests, err = loadRequests(ctx, tx, id); err != nil {
+		return t, fmt.Errorf("tasksvc: load requests: %w", err)
 	}
 	return t, nil
 }

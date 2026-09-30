@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS idempotency_keys;
+ALTER TABLE tasks DROP COLUMN IF EXISTS source;

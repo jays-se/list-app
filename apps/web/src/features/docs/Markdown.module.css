@@ -1,0 +1,67 @@
+.md {
+  line-height: var(--lineHeightBase400);
+  overflow-wrap: anywhere;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  margin: var(--spacingL) 0 var(--spacingS);
+  line-height: var(--lineHeightBase500);
+  font-weight: var(--fontWeightSemibold);
+}
+.md h2 {
+  font-size: var(--fontSizeBase600);
+}
+.md h3 {
+  font-size: var(--fontSizeBase500);
+}
+.md h4,
+.md h5,
+.md h6 {
+  font-size: var(--fontSizeBase400);
+}
+.md p,
+.md ul,
+.md ol,
+.md blockquote,
+.md pre {
+  margin: 0 0 var(--spacingM);
+}
+.md ul,
+.md ol {
+  padding-left: var(--spacingXXL);
+}
+.md blockquote {
+  padding-left: var(--spacingM);
+  border-left: var(--strokeWidthThick) solid var(--colorNeutralStroke2);
+  color: var(--colorNeutralForeground2);
+}
+.md code {
+  padding: 0 var(--spacingXXS);
+  border-radius: var(--borderRadiusSmall);
+  background: var(--colorNeutralBackground3);
+  font-family: var(--fontFamilyMonospace);
+  font-size: 0.9em;
+}
+.md pre {
+  padding: var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground3);
+  overflow-x: auto;
+}
+.md pre code {
+  padding: 0;
+  background: none;
+}
+.md a {
+  color: var(--colorBrandForeground1);
+}
+.md hr {
+  border: none;
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+}

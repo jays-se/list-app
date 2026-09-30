@@ -2,11 +2,36 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacingS);
-  min-width: 160px;
+  min-width: 0;
+}
+
+.dropdown {
+  width: auto;
+  min-width: 140px;
   max-width: 240px;
+  font-weight: var(--fontWeightSemibold);
+}
+
+.mark {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: var(--borderRadiusSmall);
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase100);
+  font-weight: var(--fontWeightBold);
 }
 
 .error {
   color: var(--colorStatusDangerForeground1);
   font-size: var(--fontSizeBase200);
+}
+
+@media (max-width: 720px) {
+  .dropdown {
+    min-width: 0;
+    max-width: 140px;
+  }
 }

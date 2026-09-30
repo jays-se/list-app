@@ -103,6 +103,25 @@ export function ClientDetailPage() {
           </ul>
         )}
       </section>
+      <section className={styles.panel} aria-labelledby="client-docs">
+        <h2 id="client-docs" className={styles.subtitle}>
+          Docs <span className={styles.muted}>{vm.docsText}</span>
+        </h2>
+        {vm.docs.length === 0 ? (
+          <p className={styles.muted}>
+            No docs linked yet. Pick this client on a doc.
+          </p>
+        ) : (
+          <ul className={styles.taskList}>
+            {vm.docs.map((d) => (
+              <li key={d.id} className={styles.taskRow}>
+                <Link to={`/docs/${d.id}`}>{d.title}</Link>
+                <span className={styles.muted}>{d.metaText}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       {remove.error && (
         <p role="alert" className={styles.error}>
           {remove.error.message}

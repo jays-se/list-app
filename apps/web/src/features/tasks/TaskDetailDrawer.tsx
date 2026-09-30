@@ -1,19 +1,29 @@
 import { type ActionState, useAction, useView } from "@app/bridge"
-import type { TaskDetailVM, TaskDraft } from "@app/protocol"
-import { Button, ConfirmDialog, Drawer, Spinner, Tabs } from "@app/ui-kit"
+import type { RequestDraft, TaskDetailVM, TaskDraft } from "@app/protocol"
+import {
+  Button,
+  ConfirmDialog,
+  Drawer,
+  Field,
+  Spinner,
+  Tabs,
+  Textarea,
+} from "@app/ui-kit"
 import { useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { sameDraft } from "./draft.ts"
+import { RequestForm } from "./RequestForm.tsx"
 import { ActivityTab } from "./sections/ActivityTab.tsx"
 import { AttachmentsSection } from "./sections/AttachmentsSection.tsx"
 import { ChecklistSection } from "./sections/ChecklistSection.tsx"
 import { CommentsSection } from "./sections/CommentsSection.tsx"
+import { RequestsSection } from "./sections/RequestsSection.tsx"
 import { SubtasksSection } from "./sections/SubtasksSection.tsx"
 import styles from "./TaskDetailDrawer.module.css"
 import { TaskForm } from "./TaskForm.tsx"
 import { TaskReadOnly } from "./TaskReadOnly.tsx"
 
-type Confirm = "discard" | "delete" | null
+type Confirm = "discard" | "delete" | "request" | null
 
 /** `?task=<id>`: view or edit one task (E4-S4). */
 export function TaskDetailDrawer({
@@ -27,6 +37,10 @@ export function TaskDetailDrawer({
   const save = useAction("tasks.save")
   const remove = useAction("tasks.delete")
   const refresh = useAction("tasks.refresh")
+  const submitRequest = useAction("requests.submit")
+  // Request mode: uncommitted proposal + its note (UI state, ADR-0005).
+  const [requestDraft, setRequestDraft] = useState<RequestDraft | null>(null)
+  const [note, setNote] = useState("")
   // null = showing saved values (they keep updating via polling).
   const [draft, setDraft] = useState<TaskDraft | null>(null)
   const [confirm, setConfirm] = useState<Confirm>(null)
@@ -38,7 +52,13 @@ export function TaskDetailDrawer({
     return { search: `?${next}` }
   }
   const vm = detail.data
-  const dirty = Boolean(draft && vm && !sameDraft(draft, vm.saved))
+  const dirty =
+    Boolean(draft && vm && !sameDraft(draft, vm.saved)) ||
+    Boolean(
+      requestDraft &&
+        vm &&
+        JSON.stringify(requestDraft) !== JSON.stringify(vm.requestDraft)
+    )
   const conflict = save.error?.code === "HTTP_409"
 
   const requestClose = () => (dirty ? setConfirm("discard") : onClose())
@@ -57,6 +77,20 @@ export function TaskDetailDrawer({
     setDraft(null)
     save.reset()
     void refresh.run({ taskId }).catch(() => {})
+  }
+
+  async function sendRequest() {
+    if (!requestDraft) return
+    try {
+      await submitRequest.run({ taskId, draft: requestDraft, note })
+      setRequestDraft(null)
+      setNote("")
+      setConfirm(null)
+    } catch (error) {
+      // Field problems belong on the form; others stay in the dialog.
+      const e = error as { fieldErrors?: { field: string }[] }
+      if (e.fieldErrors?.some((f) => f.field !== "note")) setConfirm(null)
+    }
   }
 
   async function confirmDelete() {
@@ -78,11 +112,34 @@ export function TaskDetailDrawer({
         subtitle={vm && <Subtitle vm={vm} />}
         onRequestClose={requestClose}
         footer={
-          vm?.mode === "manage" && (
+          (vm?.mode === "manage" && (
             <ManageFooter
               {...{ vm, dirty, save, submit, setDraft, setConfirm }}
             />
-          )
+          )) ||
+          (vm?.mode === "request" && (
+            <>
+              <Button
+                appearance="primary"
+                disabled={!dirty || submitRequest.pending}
+                onClick={() => {
+                  submitRequest.reset()
+                  setConfirm("request")
+                }}
+              >
+                Request changes
+              </Button>
+              <Button
+                disabled={!dirty}
+                onClick={() => {
+                  setRequestDraft(null)
+                  submitRequest.reset()
+                }}
+              >
+                Revert
+              </Button>
+            </>
+          ))
         }
       >
         {!vm && !detail.error && <Spinner label="Loading task" />}
@@ -144,7 +201,21 @@ export function TaskDetailDrawer({
                     />
                   </form>
                 )}
-                {vm.mode === "view" && <TaskReadOnly vm={vm} />}
+                {vm.mode === "request" && (
+                  <RequestForm
+                    vm={vm}
+                    draft={requestDraft ?? vm.requestDraft}
+                    error={
+                      confirm === "request" ? undefined : submitRequest.error
+                    }
+                    onChange={(next) => {
+                      setRequestDraft(next)
+                      submitRequest.reset()
+                    }}
+                  />
+                )}
+                {vm.mode !== "manage" && <TaskReadOnly vm={vm} />}
+                <RequestsSection vm={vm} />
                 <SubtasksSection vm={vm} />
                 <ChecklistSection vm={vm} />
                 <AttachmentsSection vm={vm} />
@@ -168,6 +239,31 @@ export function TaskDetailDrawer({
         onCancel={() => setConfirm(null)}
       />
       <ConfirmDialog
+        open={confirm === "request"}
+        title="Send your changes for approval?"
+        confirmLabel={submitRequest.pending ? "Sending…" : "Send request"}
+        pending={submitRequest.pending}
+        onConfirm={sendRequest}
+        onCancel={() => setConfirm(null)}
+      >
+        <p className={styles.meta}>
+          Each changed field becomes its own request to the task's creator and
+          owners.
+        </p>
+        <Field
+          label="Note"
+          hint="Optional · up to 1,000 characters"
+          validationMessage={submitRequest.error?.message}
+        >
+          <Textarea
+            rows={3}
+            maxLength={1000}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </Field>
+      </ConfirmDialog>
+      <ConfirmDialog
         open={confirm === "delete"}
         title="Delete this task?"
         confirmLabel="Delete"
@@ -187,6 +283,8 @@ function Subtitle({ vm }: { vm: TaskDetailVM }) {
       {vm.statusLabel} · {vm.priorityLabel}
       {vm.dueText ? ` · ${vm.dueText}` : ""}
       {vm.mode === "view" ? " · View only" : ""}
+      {vm.mode === "request" ? " · Changes need approval" : ""}
+      {vm.pendingRequestCount > 0 ? ` · ${vm.requestsText}` : ""}
     </span>
   )
 }

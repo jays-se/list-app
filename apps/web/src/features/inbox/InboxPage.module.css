@@ -1,0 +1,308 @@
+.page {
+  display: grid;
+  gap: var(--spacingL);
+  max-width: 880px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacingM);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingS);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.muted {
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}
+
+.error {
+  margin: 0;
+  color: var(--colorStatusDangerForeground1);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacingS);
+  margin-bottom: var(--spacingL);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingS);
+  height: 28px;
+  padding: 0 var(--spacingM);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground2);
+  font: inherit;
+  font-size: var(--fontSizeBase200);
+  cursor: pointer;
+}
+.chip:hover {
+  background: var(--colorSubtleBackgroundHover);
+}
+.chipOn,
+.chipOn:hover {
+  border-color: var(--colorBrandStroke1);
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+.chipCount {
+  color: var(--colorNeutralForeground3);
+  font-weight: var(--fontWeightRegular);
+}
+
+.sections {
+  display: grid;
+  gap: var(--spacingL);
+}
+
+.day {
+  margin: 0 0 var(--spacingS);
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusXLarge);
+  background: var(--colorNeutralBackground1);
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--spacingM);
+  align-items: start;
+  padding: var(--spacingM) var(--spacingL);
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  transition: background var(--durationFaster) var(--curveEasyEase);
+}
+.item:first-child {
+  border-top: none;
+}
+.item:hover {
+  background: var(--colorNeutralBackground1Hover);
+}
+.unread::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--colorBrandBackground);
+  content: "";
+}
+
+.who {
+  position: relative;
+  display: inline-flex;
+}
+.system {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground2);
+}
+.kind {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: var(--strokeWidthThick) solid var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground2);
+}
+.kind svg {
+  width: 12px;
+  height: 12px;
+}
+.brand {
+  background: var(--colorBrandBackground);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+.informative {
+  background: var(--colorStatusInfoBackground3);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+.warning {
+  background: var(--colorStatusWarningBackground3);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+.success {
+  background: var(--colorStatusSuccessBackground3);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+.danger {
+  background: var(--colorStatusDangerBackground3);
+  color: var(--colorNeutralForegroundOnBrand);
+}
+
+.body {
+  display: grid;
+  gap: var(--spacingXXS);
+  min-width: 0;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacingXS) var(--spacingS);
+  margin: 0;
+}
+.text {
+  color: var(--colorNeutralForeground2);
+}
+.unread .text {
+  color: var(--colorNeutralForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+.kindLabel {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase100);
+}
+
+/* The task link covers the row, so the whole row opens the task. */
+.task {
+  overflow: hidden;
+  color: var(--colorNeutralForeground1);
+  font-weight: var(--fontWeightSemibold);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+.task:hover {
+  color: var(--colorBrandForeground1);
+  text-decoration: underline;
+}
+.task:focus-visible {
+  outline: none;
+}
+.task:focus-visible::after {
+  border-radius: var(--borderRadiusMedium);
+  outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+  outline-offset: calc(-1 * var(--strokeWidthThick));
+}
+
+.quote {
+  margin: var(--spacingXS) 0 0;
+  padding: var(--spacingS) var(--spacingM);
+  border-left: var(--strokeWidthThick) solid var(--colorNeutralStroke1);
+  border-radius: 0 var(--borderRadiusMedium) var(--borderRadiusMedium) 0;
+  background: var(--colorNeutralBackground2);
+  color: var(--colorNeutralForeground2);
+}
+
+.meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacingS);
+}
+.time {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  white-space: nowrap;
+}
+.markRead {
+  opacity: 0;
+}
+.item:hover .markRead,
+.markRead:focus-visible {
+  opacity: 1;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--borderRadiusCircular);
+}
+.unread .dot {
+  background: var(--colorBrandBackground);
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacingS);
+  padding: var(--spacingXXXL) var(--spacingL);
+  border: var(--strokeWidthThin) dashed var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusXLarge);
+  text-align: center;
+}
+.emptyIcon {
+  display: inline-grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+}
+.emptyText {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}
+.link {
+  color: var(--colorBrandForeground1);
+}
+
+@media (hover: none) {
+  .markRead {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .header {
+    flex-direction: column;
+  }
+  .item {
+    padding: var(--spacingM);
+  }
+}
+
+@media (forced-colors: active) {
+  .unread::before,
+  .unread .dot {
+    background: Highlight;
+  }
+}

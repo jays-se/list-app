@@ -22,6 +22,8 @@ type TaskSummaryRsp struct {
 	Client    *ClientRef `json:"client"`
 	Parent    *TaskRef   `json:"parent"`
 	Counts    Counts     `json:"counts"`
+	Source    *string    `json:"source"`
+	Viewer    Viewer     `json:"viewer"`
 }
 
 // TaskRsp is api/openapi.yaml#Task.
@@ -48,6 +50,7 @@ type TaskRsp struct {
 	Checklist   []ChecklistItem `json:"checklist"`
 	Comments    []Comment       `json:"comments"`
 	Attachments []Attachment    `json:"attachments"`
+	Requests    []ChangeRequest `json:"requests"`
 }
 
 // ListTasksRsp is api/openapi.yaml#TaskList.

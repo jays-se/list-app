@@ -17,6 +17,9 @@ const (
 	ActionSetLabels
 	ActionSetOwners
 	ActionDelete
+	// ActionRequest proposes a change; ActionReview approves or rejects one.
+	ActionRequest
+	ActionReview
 )
 
 // Access is what the policy needs to know about a task and the caller.
@@ -27,6 +30,9 @@ type Access struct {
 	// WorkspaceRole is the caller's role in the task's workspace.
 	WorkspaceRole string
 }
+
+// ViewerOf is the caller's permissions on t (for list rows).
+func ViewerOf(t mdl.Task, c Caller) mdl.Viewer { return Evaluate(accessOf(t, c), c.UserID) }
 
 func accessOf(t mdl.Task, c Caller) Access {
 	a := Access{CreatedBy: t.CreatedBy.ID, WorkspaceRole: c.Role}
@@ -44,18 +50,23 @@ func accessOf(t mdl.Task, c Caller) Access {
 //   - workspace OWNER: manages every task, including its owners (ADR-0021)
 //   - creator: manages the task and its owners
 //   - task owner: manages the task, not its owners
-//   - everyone else in the workspace can view. Assignees who can't manage
-//     use change requests (E5-S2); until then they view.
+//   - assignees who can't manage propose changes as requests (E5-S2)
+//   - everyone else in the workspace can view.
 func Evaluate(a Access, userID string) mdl.Viewer {
 	isAdmin := a.WorkspaceRole == "OWNER"
 	isCreator := a.CreatedBy == userID
 	isOwner := slices.Contains(a.OwnerIDs, userID)
+	canManage := isAdmin || isCreator || isOwner
+	isAssignee := slices.Contains(a.AssigneeIDs, userID)
 	return mdl.Viewer{
-		CanManage:       isAdmin || isCreator || isOwner,
+		CanManage:       canManage,
 		CanManageOwners: isAdmin || isCreator,
-		IsAssignee:      slices.Contains(a.AssigneeIDs, userID),
+		IsAssignee:      isAssignee,
+		CanRequest:      isAssignee && !canManage,
 	}
 }
+
+var ErrManagerRequest = &apperr.Forbidden{Detail: "You can change this task directly."}
 
 var ErrForbidden = &apperr.Forbidden{Detail: "You can't change this task. Ask its creator or an owner."}
 
@@ -66,8 +77,13 @@ func Authorize(a Access, userID string, action Action) error {
 	switch action {
 	case ActionView:
 		allowed = true
-	case ActionUpdate, ActionSetAssignees, ActionSetLabels, ActionDelete:
+	case ActionUpdate, ActionSetAssignees, ActionSetLabels, ActionDelete, ActionReview:
 		allowed = v.CanManage
+	case ActionRequest:
+		if v.CanManage {
+			return ErrManagerRequest
+		}
+		allowed = v.CanRequest
 	case ActionSetOwners:
 		allowed = v.CanManageOwners
 	}

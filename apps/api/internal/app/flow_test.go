@@ -28,6 +28,14 @@ type client struct {
 
 func newServer(t *testing.T) string {
 	t.Helper()
+	base, _ := newServerApp(t)
+	return base
+}
+
+// newServerApp also returns the App so tests can drive background work
+// (outbox dispatch, DUE reminders) deterministically.
+func newServerApp(t *testing.T) (string, *app.App) {
+	t.Helper()
 	pool := testdb.Pool(t)
 	srv := httptest.NewUnstartedServer(nil)
 	cfg, err := config.Load(func(k string) string {
@@ -40,14 +48,14 @@ func newServer(t *testing.T) string {
 	if os.Getenv("TEST_LOG") != "" { // TEST_LOG=1 shows server logs
 		out = os.Stderr
 	}
-	h, _, err := app.New(cfg, app.Options{Pool: pool, Log: slog.New(slog.NewTextHandler(out, nil)), StartedAt: time.Now()})
+	a, err := app.Build(cfg, app.Options{Pool: pool, Log: slog.New(slog.NewTextHandler(out, nil)), StartedAt: time.Now()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.Config.Handler = h
+	srv.Config.Handler = a.Handler
 	srv.Start()
 	t.Cleanup(srv.Close)
-	return srv.URL
+	return srv.URL, a
 }
 
 func newClient(t *testing.T, base string) *client {
@@ -321,5 +329,31 @@ func TestLoginFailures(t *testing.T) {
 	res = c.postForm("/api/v1/auth/dev/authorize", url.Values{"state": {q.Get("state")}, "nonce": {q.Get("nonce")}, "name": {""}, "email": {"not-an-email"}})
 	if res.StatusCode != 422 {
 		t.Fatalf("invalid dev form = %d", res.StatusCode)
+	}
+}
+
+func TestMetricsAndClientErrors(t *testing.T) {
+	base := newServer(t)
+	c := newClient(t, base)
+	res, raw := c.do("POST", "/api/v1/client-errors", map[string]any{"source": "worker", "message": "boom", "stack": "at x"}, true)
+	expect(t, res, raw, 204)
+	res, raw = c.do("POST", "/api/v1/client-errors", map[string]any{"source": "other", "message": strings.Repeat("é", 2000)}, true)
+	expect(t, res, raw, 204)
+	res, raw = c.do("POST", "/api/v1/client-errors", map[string]any{"message": "no csrf"}, false)
+	expect(t, res, raw, 403)
+	c.do("GET", "/api/v1/tasks", nil, false) // 401: counted under its route
+	res, raw = c.do("GET", "/metrics", nil, false)
+	expect(t, res, raw, 200)
+	for _, want := range []string{
+		`client_errors_total{source="worker"} 1`,
+		`client_errors_total{source="unknown"} 1`,
+		`http_requests_total{route="GET /api/v1/tasks",status="401"} 1`,
+		`http_request_duration_seconds_bucket{route="POST /api/v1/client-errors",le="+Inf"}`,
+		"outbox_pending_events 0",
+		"# TYPE outbox_oldest_pending_seconds gauge",
+	} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("metrics missing %q:\n%s", want, raw)
+		}
 	}
 }

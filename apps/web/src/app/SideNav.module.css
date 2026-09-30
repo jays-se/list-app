@@ -1,0 +1,131 @@
+.nav {
+  position: sticky;
+  top: var(--topbar);
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: calc(100vh - var(--topbar));
+  box-sizing: border-box;
+  overflow: hidden auto;
+  padding: var(--spacingS);
+  border-right: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground1);
+}
+
+.list {
+  display: grid;
+  gap: var(--spacingXXS);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bottom {
+  padding-top: var(--spacingS);
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+}
+
+.link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacingM);
+  height: 36px;
+  padding: 0 var(--spacingSNudge);
+  border-radius: var(--borderRadiusMedium);
+  color: var(--colorNeutralForeground2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.link:hover {
+  background: var(--colorSubtleBackgroundHover);
+  color: var(--colorNeutralForeground1);
+}
+.active {
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+.active:hover {
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+}
+.active::before {
+  position: absolute;
+  top: var(--spacingS);
+  bottom: var(--spacingS);
+  left: 0;
+  width: 3px;
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorBrandForeground1);
+  content: "";
+}
+
+.icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+/* Collapsed: keep the label for assistive tech, hide it visually. */
+.label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.expanded .label,
+.open .label {
+  position: static;
+  width: auto;
+  height: auto;
+  flex: 1;
+  overflow: hidden;
+  clip-path: none;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  min-width: 18px;
+  padding: 0 var(--spacingXS);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorBrandBackground);
+  color: var(--colorNeutralForegroundOnBrand);
+  font-size: var(--fontSizeBase100);
+  font-weight: var(--fontWeightSemibold);
+  line-height: 18px;
+  text-align: center;
+}
+.dotBadge {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border: var(--strokeWidthThick) solid var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorBrandBackground);
+}
+
+@media (max-width: 720px) {
+  .nav {
+    position: fixed;
+    top: var(--topbar);
+    left: 0;
+    z-index: 9;
+    display: none;
+    width: 260px;
+    box-shadow: var(--shadow16);
+  }
+  .nav.open {
+    display: flex;
+  }
+}
+
+@media (forced-colors: active) {
+  .active::before {
+    background: Highlight;
+  }
+}

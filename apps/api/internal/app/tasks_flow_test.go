@@ -30,7 +30,10 @@ type taskList struct {
 
 // setupWorkspace: Alice owns "Acme", Bob joins it, Carol has her own workspace.
 func setupWorkspace(t *testing.T) (alice, bob, carol *client, aliceID, bobID string) {
-	base := newServer(t)
+	return setupWorkspaceOn(t, newServer(t))
+}
+
+func setupWorkspaceOn(t *testing.T, base string) (alice, bob, carol *client, aliceID, bobID string) {
 	alice, bob, carol = newClient(t, base), newClient(t, base), newClient(t, base)
 	alice.signIn("Alice", "alice@example.com", "/")
 	bob.signIn("Bob", "bob@example.com", "/")

@@ -21,6 +21,11 @@ export interface ApiClientOptions {
   fetch?: typeof fetch
   /** Called on any 401 (the worker turns it into a `session.expired` push). */
   onUnauthorized?: () => void
+  /**
+   * Called on 409 `no_active_workspace`: the caller was removed from (or
+   * left) the active workspace, so every cached tenant view is stale.
+   */
+  onNoWorkspace?: () => void
 }
 
 /**
@@ -53,8 +58,12 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     if (response.status === 401 && !opts.skipAuthRedirect) {
       options.onUnauthorized?.()
     }
-    if (!response.ok)
-      throw new AppError(response.status, await problem(response))
+    if (!response.ok) {
+      const details = await problem(response)
+      if (response.status === 409 && details.type === "no_active_workspace")
+        options.onNoWorkspace?.()
+      throw new AppError(response.status, details)
+    }
     if (response.status === 204) return undefined as T
     const text = await response.text()
     return (text ? JSON.parse(text) : undefined) as T

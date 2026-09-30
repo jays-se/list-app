@@ -7,6 +7,7 @@ import styles from "./sections.module.css"
 
 export function SubtasksSection({ vm }: { vm: TaskDetailVM }) {
   const add = useAction("tasks.addSubtask")
+  const propose = useAction("requests.propose")
   const [title, setTitle] = useState("")
   const [search] = useSearchParams()
   const linkTo = (id: string) => {
@@ -18,7 +19,15 @@ export function SubtasksSection({ vm }: { vm: TaskDetailVM }) {
   async function submit(e: FormEvent) {
     e.preventDefault()
     try {
-      await add.run({ parentId: vm.id, title })
+      if (vm.canRequestSubtask) {
+        await propose.run({
+          taskId: vm.id,
+          kind: "SUBTASK_ADD",
+          payload: { title },
+        })
+      } else {
+        await add.run({ parentId: vm.id, title })
+      }
       setTitle("")
     } catch {
       // add.error shown below
@@ -45,13 +54,13 @@ export function SubtasksSection({ vm }: { vm: TaskDetailVM }) {
           ))}
         </ul>
       )}
-      {vm.canAddSubtask && (
+      {(vm.canAddSubtask || vm.canRequestSubtask) && (
         <form className={styles.inline} onSubmit={submit} noValidate>
           <Field
             label="New subtask"
             validationMessage={
-              add.error?.fieldErrors?.[0]?.message ??
-              (add.error?.fieldErrors?.length ? undefined : add.error?.message)
+              (propose.error ?? add.error)?.fieldErrors?.[0]?.message ??
+              (propose.error ?? add.error)?.message
             }
           >
             <Input
@@ -59,11 +68,12 @@ export function SubtasksSection({ vm }: { vm: TaskDetailVM }) {
               onChange={(e) => {
                 setTitle(e.target.value)
                 add.reset()
+                propose.reset()
               }}
             />
           </Field>
-          <Button type="submit" disabled={add.pending}>
-            Add subtask
+          <Button type="submit" disabled={add.pending || propose.pending}>
+            {vm.canRequestSubtask ? "Request subtask" : "Add subtask"}
           </Button>
         </form>
       )}

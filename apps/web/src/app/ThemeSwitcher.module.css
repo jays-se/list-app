@@ -1,11 +1,4 @@
 .root {
   display: inline-flex;
-  align-items: center;
-  gap: var(--spacingS);
-  width: 172px;
-}
-
-.label {
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
+  width: 160px;
 }

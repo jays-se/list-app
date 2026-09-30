@@ -1,5 +1,7 @@
 import { type Browser, expect, type Page, test } from "@playwright/test"
 import {
+  choose,
+  chooseMany,
   collectErrors,
   createWorkspace,
   expectNoAxeViolations,
@@ -38,16 +40,13 @@ async function createTask(
   title: string,
   opts: { assignee?: string; label?: string } = {}
 ) {
-  await page.getByRole("link", { name: "Tasks" }).click()
+  await page.getByRole("link", { name: "Tasks", exact: true }).click()
   await page.getByRole("button", { name: "New task" }).click()
   const drawer = page.getByRole("dialog", { name: "New task" })
   await drawer.getByRole("textbox", { name: /Title/ }).fill(title)
   if (opts.assignee)
-    await drawer
-      .getByRole("checkbox", { name: new RegExp(opts.assignee) })
-      .check()
-  if (opts.label)
-    await drawer.getByRole("checkbox", { name: new RegExp(opts.label) }).check()
+    await chooseMany(drawer, "Assignees", [new RegExp(opts.assignee)])
+  if (opts.label) await chooseMany(drawer, "Labels", [new RegExp(opts.label)])
   await drawer.getByRole("button", { name: "Create task" }).click()
   await expect(page.getByRole("dialog", { name: title })).toBeVisible()
 }
@@ -60,13 +59,13 @@ test("create, filter, edit and delete a task", async ({ browser }) => {
   // A label from settings, then a task using it, assigned to the member.
   await page.getByRole("link", { name: "Settings" }).click()
   await page.getByRole("textbox", { name: "New label" }).fill("Bug")
-  await page.getByRole("combobox", { name: "Color" }).selectOption("red")
+  await choose(page, "Color", "Red")
   await page.getByRole("button", { name: "Add label" }).click()
   await expect(
     page.getByRole("region", { name: "Labels" }).getByText("Bug")
   ).toBeVisible()
 
-  await page.getByRole("link", { name: "Tasks" }).click()
+  await page.getByRole("link", { name: "Tasks", exact: true }).click()
   await page.getByRole("button", { name: "New task" }).click()
   const create = page.getByRole("dialog", { name: "New task" })
   await create.getByRole("button", { name: "Create task" }).click()
@@ -92,7 +91,7 @@ test("create, filter, edit and delete a task", async ({ browser }) => {
   await expectNoAxeViolations(page, "tasks list")
 
   // Filter by status via the URL-backed filter bar.
-  await page.getByRole("combobox", { name: "Status" }).selectOption("DONE")
+  await choose(page, "Status", "Done")
   await expect(page).toHaveURL(/status=DONE/)
   await expect(page.getByText("No matching tasks")).toBeVisible()
   await page.getByRole("button", { name: "Clear filters" }).click()
@@ -100,9 +99,7 @@ test("create, filter, edit and delete a task", async ({ browser }) => {
   // Edit: move to In progress with a due date.
   await page.getByRole("link", { name: /Fix login bug/ }).click()
   const drawer = page.getByRole("dialog", { name: "Fix login bug" })
-  await drawer
-    .getByRole("combobox", { name: "Status" })
-    .selectOption("IN_PROGRESS")
+  await choose(drawer, "Status", "In progress")
   await drawer
     .getByRole("textbox", { name: "End", exact: true })
     .fill("2099-01-10")
@@ -120,18 +117,19 @@ test("create, filter, edit and delete a task", async ({ browser }) => {
       .getByRole("link", { name: /Fix login bug/ })
   ).toContainText(/Due (9 Jan|Jan 9),? 2099/)
 
-  // The member sees it in "Assigned to me", read-only.
-  await member.page.getByRole("link", { name: "Tasks" }).click()
+  // The member sees it in "Assigned to me" and can only request changes (E5-S3).
+  await member.page.getByRole("link", { name: "Tasks", exact: true }).click()
   await member.page.getByRole("checkbox", { name: "Assigned to me" }).check()
   await member.page.getByRole("link", { name: /Fix login bug/ }).click()
   await expect(
-    member.page.getByText(
-      "You can view this task. Its creator and owners can change it."
-    )
+    member.page.getByText(/Changes you make go to its creator and owners/)
   ).toBeVisible()
   await expect(
     member.page.getByRole("button", { name: "Save changes" })
   ).toHaveCount(0)
+  await expect(
+    member.page.getByRole("button", { name: "Request changes" })
+  ).toBeDisabled()
 
   // Delete with confirmation.
   await page.getByRole("link", { name: /Fix login bug/ }).click()
@@ -150,17 +148,14 @@ test("owners can edit; a stale save gets a conflict and can reload", async ({
   const { owner, member } = await team(browser)
   await createTask(owner.page, "Plan launch")
   const ownerDrawer = owner.page.getByRole("dialog", { name: "Plan launch" })
-  await ownerDrawer
-    .getByRole("checkbox", { name: new RegExp(member.person.name) })
-    .nth(1)
-    .check()
+  await chooseMany(ownerDrawer, "Owners", [new RegExp(member.person.name)])
   await ownerDrawer.getByRole("button", { name: "Save changes" }).click()
   await expect(
     ownerDrawer.getByRole("button", { name: "Save changes" })
   ).toBeDisabled()
 
   // Member is now an owner: edit form, but no owners picker.
-  await member.page.getByRole("link", { name: "Tasks" }).click()
+  await member.page.getByRole("link", { name: "Tasks", exact: true }).click()
   await member.page.getByRole("link", { name: /Plan launch/ }).click()
   const memberDrawer = member.page.getByRole("dialog", { name: "Plan launch" })
   await expect(

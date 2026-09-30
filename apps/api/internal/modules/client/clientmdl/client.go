@@ -12,6 +12,7 @@ type Client struct {
 	Color     string
 	Notes     *string
 	TaskCount int
+	DocCount  int
 }
 
 func (c Client) ToJSON() ([]byte, error) { return json.Marshal(c) }
@@ -36,6 +37,7 @@ type ClientRsp struct {
 	Color     string  `json:"color"`
 	Notes     *string `json:"notes"`
 	TaskCount int     `json:"taskCount"`
+	DocCount  int     `json:"docCount"`
 }
 
 type ListClientsRsp struct {
@@ -51,7 +53,7 @@ type ClientEnvelopeRsp struct {
 func (r ClientEnvelopeRsp) ToJSON() ([]byte, error) { return json.Marshal(r) }
 
 func ToClientRsp(c Client) ClientRsp {
-	return ClientRsp{ID: c.ID, Name: c.Name, Email: c.Email, Phone: c.Phone, Color: c.Color, Notes: c.Notes, TaskCount: c.TaskCount}
+	return ClientRsp{ID: c.ID, Name: c.Name, Email: c.Email, Phone: c.Phone, Color: c.Color, Notes: c.Notes, TaskCount: c.TaskCount, DocCount: c.DocCount}
 }
 
 func ToClientRspList(cs []Client) []ClientRsp {

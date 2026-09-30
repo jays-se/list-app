@@ -2,8 +2,6 @@ import { useView } from "@app/bridge"
 import type { TaskListParams } from "@app/protocol"
 import { AddIcon, Button, Spinner } from "@app/ui-kit"
 import { useLocation, useNavigation, useSearchParams } from "react-router"
-import { CreateTaskDrawer } from "./CreateTaskDrawer.tsx"
-import { TaskDetailDrawer } from "./TaskDetailDrawer.tsx"
 import { TaskFilters } from "./TaskFilters.tsx"
 import { TaskGroups } from "./TaskGroups.tsx"
 import styles from "./TasksPage.module.css"
@@ -26,7 +24,7 @@ export function listParams(search: URLSearchParams): TaskListParams {
   return params
 }
 
-/** /tasks — list (E4-S2); ?task=<id> opens detail, ?create=1 opens create. */
+/** /tasks — list (E4-S2). The shell opens ?task=<id> and ?create=1. */
 export function TasksPage() {
   const [committed, setSearch] = useSearchParams()
   // Optimistic UI (react-router pattern): while a same-page navigation is
@@ -38,8 +36,6 @@ export function TasksPage() {
       ? new URLSearchParams(pending.search)
       : committed
   const list = useView("tasks.list", listParams(search), { keepPrevious: true })
-  const taskId = search.get("task")
-  const creating = search.get("create") === "1"
 
   const updateSearch = (edit: (next: URLSearchParams) => void) => {
     const next = new URLSearchParams(search)
@@ -96,24 +92,6 @@ export function TasksPage() {
       )}
       {list.data && !list.data.isEmpty && (
         <TaskGroups groups={list.data.groups} search={search} />
-      )}
-
-      {creating && (
-        <CreateTaskDrawer
-          onClose={(createdId) =>
-            updateSearch((s) => {
-              s.delete("create")
-              if (createdId) s.set("task", createdId)
-            })
-          }
-        />
-      )}
-      {taskId && !creating && (
-        <TaskDetailDrawer
-          key={taskId}
-          taskId={taskId}
-          onClose={() => updateSearch((s) => s.delete("task"))}
-        />
       )}
     </div>
   )

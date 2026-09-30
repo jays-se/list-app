@@ -37,6 +37,7 @@ type WorkspaceSvc struct {
 	pool     *pgxpool.Pool
 	sessions ActiveSetter
 	log      *slog.Logger
+	cleanup  MemberCleanup
 }
 
 func NewWorkspaceSvc(pool *pgxpool.Pool, sessions ActiveSetter, log *slog.Logger) *WorkspaceSvc {

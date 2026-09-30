@@ -29,6 +29,8 @@ type Counts struct {
 	ChecklistDone int `json:"checklistDone"`
 	Comments      int `json:"comments"`
 	Attachments   int `json:"attachments"`
+	// PendingRequests counts change requests awaiting review.
+	PendingRequests int `json:"pendingRequests"`
 }
 
 // ChecklistItem is api/openapi.yaml#ChecklistItem.

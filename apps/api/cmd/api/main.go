@@ -61,11 +61,14 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config) error {
 	}
 	log.Info("auth_configured", "provider", cfg.AuthProvider, "public_base_url", cfg.PublicBaseURL)
 	log.Info("blob_storage_configured", "driver", cfg.BlobDriver)
-	handler, _, err := app.New(cfg, opts)
+	a, err := app.Build(cfg, opts)
 	if err != nil {
 		return err
 	}
-	return apiserver.Serve(ctx, log, cfg.HTTPAddr, handler, cfg.ShutdownTimeout)
+	if opts.Pool != nil {
+		a.RunBackground(ctx) // outbox dispatcher + DUE reminders (ADR-0023)
+	}
+	return apiserver.Serve(ctx, log, cfg.HTTPAddr, a.Handler, cfg.ShutdownTimeout)
 }
 
 func migrate(ctx context.Context, log *slog.Logger, cfg config.Config, args []string) error {

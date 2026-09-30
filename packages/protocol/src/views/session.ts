@@ -43,11 +43,17 @@ export interface MemberVM {
   isOwner: boolean
   isYou: boolean
   joinedText: string
+  role: "OWNER" | "MEMBER"
+  /** Workspace owners manage others (E3-S6); nobody manages themselves here. */
+  canChangeRole: boolean
+  canRemove: boolean
 }
 
 export interface MembersVM {
   members: MemberVM[]
   countText: string
+  canManage: boolean
+  roleOptions: { value: "OWNER" | "MEMBER"; label: string }[]
 }
 
 export interface WorkspaceRefVM {

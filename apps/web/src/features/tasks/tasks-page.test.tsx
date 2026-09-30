@@ -32,13 +32,19 @@ function makeTask(over: Record<string, unknown> = {}) {
     createdAt: "2026-09-30T10:00:00Z",
     updatedAt: "2026-09-30T10:00:00Z",
     version: 1,
-    viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+    viewer: {
+      canManage: true,
+      canManageOwners: true,
+      isAssignee: false,
+      canRequest: false,
+    },
     client: null,
     parent: null,
     subtasks: [],
     checklist: [],
     comments: [],
     attachments: [],
+    requests: [],
     ...over,
   }
 }
@@ -51,6 +57,7 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
             canManage: false,
             canManageOwners: false,
             isAssignee: true,
+            canRequest: false,
           },
         }
       : {}
@@ -94,7 +101,6 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
         return json({ labels: [{ id: "l1", name: "Bug", color: "red" }] })
       case "GET /tasks": {
         const {
-          viewer: _v,
           owners: _o,
           description: _d,
           createdAt: _c,
@@ -102,6 +108,7 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
           checklist: _k,
           comments: _m,
           attachments: _a,
+          requests: _r,
           ...rest
         } = task
         const counts = {
@@ -111,9 +118,12 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
           checklistDone: 0,
           comments: 0,
           attachments: 0,
+          pendingRequests: 0,
         }
         return json({
-          tasks: url.includes("status=DONE") ? [] : [{ ...rest, counts }],
+          tasks: url.includes("status=DONE")
+            ? []
+            : [{ ...rest, counts, source: null }],
         })
       }
       case "GET /tasks/t1":
@@ -171,9 +181,8 @@ describe("tasks page", () => {
     expect(row.textContent).toContain("Bug")
     expect(row.textContent).toContain("Assignees: Grace")
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Status" }), {
-      target: { value: "DONE" },
-    })
+    fireEvent.click(screen.getByRole("combobox", { name: "Status" }))
+    fireEvent.click(screen.getByRole("option", { name: "Done" }))
     expect(await screen.findByText("No matching tasks")).toBeTruthy()
     expect(router.state.location.search).toBe("?status=DONE")
     expect(api.calls).toContain("GET /tasks?status=DONE")
@@ -244,9 +253,9 @@ describe("tasks page", () => {
     fireEvent.change(within(drawer).getByRole("textbox", { name: /Title/ }), {
       target: { value: "Write docs" },
     })
-    fireEvent.click(
-      within(drawer).getByRole("checkbox", { name: /Grace Hopper/ })
-    )
+    fireEvent.click(within(drawer).getByRole("combobox", { name: "Assignees" }))
+    fireEvent.click(screen.getByRole("option", { name: /Grace Hopper/ }))
+    fireEvent.pointerDown(document.body)
     fireEvent.click(within(drawer).getByRole("button", { name: "Create task" }))
     await waitFor(() => expect(api.calls).toContain("POST /tasks"))
     const post = api.handler.mock.calls.find(

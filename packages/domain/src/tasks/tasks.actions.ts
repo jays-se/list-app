@@ -28,7 +28,10 @@ export function diffTask(
   return patch
 }
 
-async function currentTask(ctx: DomainContext, taskId: string): Promise<Task> {
+export async function currentTask(
+  ctx: DomainContext,
+  taskId: string
+): Promise<Task> {
   return (
     ctx.client.getQueryData<Task>(taskKeys.detail(taskId)) ??
     (await ctx.client.fetchQuery(taskDetailQuery(ctx.api, taskId)))

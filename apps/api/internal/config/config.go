@@ -55,6 +55,15 @@ type Config struct {
 	S3AccessKey string
 	S3SecretKey string
 	S3PathStyle bool
+
+	// TrustProxyHeaders takes the client IP from X-Forwarded-For (only
+	// behind our own Caddy) for rate limiting (ADR-0025).
+	TrustProxyHeaders bool
+	// MetricsToken, when set, is required as a Bearer token on /metrics.
+	MetricsToken string
+	// RateLimits turns the per-IP limits on (default: prod only, since dev
+	// and test sign in many users from one address).
+	RateLimits bool
 }
 
 // Load reads configuration using getenv (os.Getenv in production, a map in tests).
@@ -76,6 +85,8 @@ func Load(getenv func(string) string) (Config, error) {
 		GoogleIssuer:       get("GOOGLE_ISSUER", "https://accounts.google.com"),
 		GoogleClientID:     getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: getenv("GOOGLE_CLIENT_SECRET"),
+		TrustProxyHeaders:  getenv("TRUST_PROXY_HEADERS") == "true",
+		MetricsToken:       getenv("METRICS_TOKEN"),
 	}
 
 	switch cfg.Env {
@@ -97,6 +108,14 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("config: PUBLIC_BASE_URL must be an absolute http(s) URL, got %q", cfg.PublicBaseURL)
 	}
 	cfg.CookieSecure = base.Scheme == "https"
+
+	switch get("RATE_LIMITS", map[bool]string{true: "on", false: "off"}[cfg.Env == EnvProd]) {
+	case "on":
+		cfg.RateLimits = true
+	case "off":
+	default:
+		return Config{}, fmt.Errorf("config: RATE_LIMITS must be on or off")
+	}
 
 	defaultProvider := AuthProviderDev
 	if cfg.Env == EnvProd {

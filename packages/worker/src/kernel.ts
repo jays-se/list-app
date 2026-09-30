@@ -4,6 +4,7 @@ import type {
   ViewDefinition,
 } from "@app/domain"
 import {
+  type ErrorReport,
   isProtocolError,
   isToWorker,
   type ProtocolError,
@@ -80,6 +81,9 @@ export class WorkerKernel {
       case "reset":
         this.reset()
         break
+      case "error.report":
+        this.reportError(message.args)
+        break
     }
   }
 
@@ -139,6 +143,28 @@ export class WorkerKernel {
     for (const options of Object.values(definition.queries(params, this.ctx))) {
       void this.ctx.client.prefetch(options)
     }
+  }
+
+  private reported = new Map<string, number>()
+
+  /**
+   * Sends an error report to the API (E12-S1): the same message at most
+   * once a minute, and at most 20 per worker, so a render loop can't flood.
+   */
+  reportError(report: ErrorReport): void {
+    const now = this.ctx.now()
+    const last = this.reported.get(report.message)
+    if ((last !== undefined && now - last < 60_000) || this.reported.size >= 20)
+      return
+    this.reported.set(report.message, now)
+    void this.ctx.api
+      .post("/client-errors", {
+        source: report.source,
+        message: report.message.slice(0, 1000),
+        ...(report.stack ? { stack: report.stack.slice(0, 4000) } : {}),
+        ...(report.url ? { url: report.url.slice(0, 500) } : {}),
+      })
+      .catch(() => {})
   }
 
   /** Clears every query and resubscribes live views (ADR-0019). */

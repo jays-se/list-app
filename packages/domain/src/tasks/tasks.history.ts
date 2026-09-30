@@ -107,6 +107,14 @@ export function eventText(e: TaskEvent, today: string, locale: string): string {
       return `removed attachment ${s}`
     case "SUBTASK_ADDED":
       return `added subtask ${q(s)}`
+    case "REQUEST_CREATED":
+      return `requested: ${s}`
+    case "REQUEST_APPROVED":
+      return `approved the request: ${s}`
+    case "REQUEST_REJECTED":
+      return `rejected the request: ${s}${e.to ? ` (${e.to})` : ""}`
+    case "REQUEST_CANCELED":
+      return `withdrew the request: ${s}`
   }
 }
 

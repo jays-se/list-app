@@ -21,13 +21,19 @@ function fakeApi() {
     createdAt: "2026-09-30T10:00:00Z",
     updatedAt: "2026-09-30T10:00:00Z",
     version: 1,
-    viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+    viewer: {
+      canManage: true,
+      canManageOwners: true,
+      isAssignee: false,
+      canRequest: false,
+    },
     client: null,
     parent: null,
     subtasks: [],
     checklist: [{ id: "c1", title: "Draft", done: false, assignee: null }],
     comments: [],
     attachments: [] as unknown[],
+    requests: [] as unknown[],
   }
   const json = (b: unknown, status = 200) => Response.json(b, { status })
   let att = 0
@@ -50,6 +56,11 @@ function fakeApi() {
         ],
       })
     }
+    if (path === "/auth/me")
+      return json({
+        user: { id: "u1", name: "Ada", email: "a@x", image: null },
+      })
+    if (path === "/workspaces") return json({ workspaces: [], active: null })
     if (path === "/labels") return json({ labels: [] })
     if (path === "/clients") return json({ clients: [] })
     if (path === "/tasks/t1" && method === "GET") return json({ task })

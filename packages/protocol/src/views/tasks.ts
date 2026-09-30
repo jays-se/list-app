@@ -29,6 +29,8 @@ export type Tone =
 export interface OptionVM<V extends string = string> {
   value: V
   label: string
+  /** Swatch for dropdowns (status dot, priority flag, client colour). */
+  color?: LabelColorKey
 }
 
 export interface PersonVM {
@@ -133,6 +135,8 @@ export interface TaskFormOptionsVM {
   members: PersonVM[]
   labels: LabelVM[]
   clientOptions: OptionVM[]
+  /** Quick picks for the due date, e.g. Today, Tomorrow (ISO values). */
+  duePresets: OptionVM[]
   /** A fresh draft: dates default to today. */
   defaults: TaskDraft
 }
@@ -152,8 +156,11 @@ export interface TaskDetailVM {
   labels: LabelVM[]
   createdText: string
   updatedText: string
-  /** "manage" = edit directly; "view" = read only (requests arrive in E5). */
-  mode: "manage" | "view"
+  /**
+   * "manage" = edit directly; "request" = an assignee who proposes changes
+   * for review (E5-S3); "view" = read only.
+   */
+  mode: TaskMode
   canManageOwners: boolean
   version: number
   /** The saved values, to seed and compare a form draft. */
@@ -173,6 +180,68 @@ export interface TaskDetailVM {
   attachments: AttachmentVM[]
   attachmentsText: string
   canAttach: boolean
+  /** Request mode: the saved requestable values, to seed a request draft. */
+  requestDraft: RequestDraft
+  /** Per-field "Awaiting approval: …" markers from pending UPDATE requests. */
+  pendingFields: Partial<Record<RequestField, string>>
+  /** e.g. "Awaiting approval: add Ada"; null when none pending. */
+  pendingAssigneesText: string | null
+  canRequestSubtask: boolean
+  requests: ChangeRequestVM[]
+  /** e.g. "2 awaiting review", "No requests yet". */
+  requestsText: string
+  pendingRequestCount: number
+}
+
+export type TaskMode = "manage" | "request" | "view"
+
+/** Fields an assignee may request to change (ADR-0023). */
+export type RequestField = "status" | "startDate" | "endDate" | "dueDate"
+
+export interface RequestDraft {
+  status: TaskStatusKey
+  startDate: string
+  endDate: string
+  /** "" = no due date. */
+  dueDate: string
+  assigneeIds: string[]
+}
+
+export type RequestKind =
+  | "UPDATE"
+  | "ASSIGNEE_ADD"
+  | "ASSIGNEE_REMOVE"
+  | "SUBTASK_ADD"
+  | "CHECKLIST_ADD"
+  | "CHECKLIST_UPDATE"
+  | "CHECKLIST_REMOVE"
+  | "ATTACHMENT_REMOVE"
+
+export interface RequestPayloadInput {
+  field?: RequestField
+  value?: string
+  userId?: string
+  title?: string
+  itemId?: string
+  done?: boolean
+  attachmentId?: string
+}
+
+export interface ChangeRequestVM {
+  id: string
+  summary: string
+  statusLabel: string
+  tone: Tone
+  isPending: boolean
+  requesterName: string
+  requesterImage: string | null
+  /** e.g. "Ada · 5 min ago". */
+  metaText: string
+  note: string | null
+  /** e.g. "Rejected by Grace · Keeping the 4th"; null while pending. */
+  reviewText: string | null
+  canReview: boolean
+  canWithdraw: boolean
 }
 
 export interface SubtaskVM {
@@ -188,6 +257,8 @@ export interface ChecklistItemVM {
   done: boolean
   assigneeId: string
   assigneeName: string | null
+  /** Request mode: "Awaiting approval: mark done"; null when none. */
+  pendingText: string | null
 }
 
 /** Comment body split so mentions can be highlighted without parsing in React. */
@@ -210,6 +281,7 @@ export interface AttachmentVM {
   sizeText: string
   metaText: string
   downloadUrl: string
+  pendingText: string | null
 }
 
 export interface HistoryItemVM {
@@ -262,6 +334,8 @@ export interface ClientDetailVM {
   saved: ClientDraft
   tasks: TaskRowVM[]
   tasksText: string
+  docs: import("./docs.ts").DocRowVM[]
+  docsText: string
   canDelete: boolean
   colorOptions: OptionVM<LabelColorKey>[]
 }

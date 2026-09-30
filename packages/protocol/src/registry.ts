@@ -1,3 +1,18 @@
+import type { DocDetailVM, DocsVM } from "./views/docs.ts"
+import type {
+  InboxBadgeVM,
+  InboxFilter,
+  InboxVM,
+  NotificationKindKey,
+  NotificationSettingsVM,
+} from "./views/inbox.ts"
+import type {
+  CalendarVM,
+  CaptureParseResult,
+  CaptureSource,
+  DashboardVM,
+} from "./views/insights.ts"
+import type { SearchVM } from "./views/search.ts"
 import type { MembersVM, SessionVM, WorkspaceRefVM } from "./views/session.ts"
 import type { SystemInfoVM } from "./views/system.ts"
 import type {
@@ -7,6 +22,9 @@ import type {
   LabelColorKey,
   LabelsVM,
   LabelVM,
+  RequestDraft,
+  RequestKind,
+  RequestPayloadInput,
   TaskDetailVM,
   TaskDraft,
   TaskFormOptionsVM,
@@ -34,6 +52,22 @@ export interface ViewMap {
   "tasks.history": { params: { taskId: string }; data: TaskHistoryVM }
   "clients.list": { params: Record<string, never>; data: ClientsVM }
   "clients.detail": { params: { clientId: string }; data: ClientDetailVM }
+  "inbox.list": {
+    params: { filter: InboxFilter; kind?: string }
+    data: InboxVM
+  }
+  "inbox.badge": { params: Record<string, never>; data: InboxBadgeVM }
+  "notifications.settings": {
+    params: Record<string, never>
+    data: NotificationSettingsVM
+  }
+  "dashboard.summary": { params: Record<string, never>; data: DashboardVM }
+  /** `month` is "YYYY-MM"; missing or invalid means this month. */
+  "calendar.month": { params: { month?: string }; data: CalendarVM }
+  "docs.list": { params: { clientId?: string }; data: DocsVM }
+  "docs.detail": { params: { docId: string }; data: DocDetailVM }
+  /** Pages, tasks, docs and clients matching `q` (ADR-0026). */
+  "search.global": { params: { q: string }; data: SearchVM }
 }
 
 type NoInput = Record<string, never>
@@ -108,6 +142,95 @@ export interface ActionMap {
     result: null
   }
   "clients.delete": { input: { clientId: string }; result: null }
+  /**
+   * Request mode (E5-S3): the worker diffs `draft` against the saved task
+   * and files one request per changed field / assignee, all with `note`.
+   */
+  "requests.submit": {
+    input: { taskId: string; draft: RequestDraft; note: string }
+    result: { created: number }
+  }
+  /** One request (checklist, subtask, attachment removal). */
+  "requests.propose": {
+    input: {
+      taskId: string
+      kind: RequestKind
+      payload: RequestPayloadInput
+      note?: string
+    }
+    result: null
+  }
+  "requests.approve": {
+    input: { taskId: string; requestId: string }
+    result: null
+  }
+  "requests.reject": {
+    input: { taskId: string; requestId: string; note: string }
+    result: null
+  }
+  "requests.withdraw": {
+    input: { taskId: string; requestId: string }
+    result: null
+  }
+  "notifications.read": { input: { id: string }; result: null }
+  "notifications.readAll": { input: NoInput; result: null }
+  /** Quick capture (E10-S1): the worker splits and cleans pasted text. */
+  "capture.parse": { input: { text: string }; result: CaptureParseResult }
+  /** All or nothing; field errors come back keyed by line id. */
+  "capture.create": {
+    input: {
+      batchId: string
+      source: CaptureSource
+      lines: { id: string; text: string }[]
+    }
+    result: { created: number }
+  }
+  "workspaces.leave": { input: NoInput; result: null }
+  "docs.create": {
+    input: { title: string; clientId?: string }
+    result: { id: string }
+  }
+  /**
+   * Each file becomes a doc: .md/.txt (≤ 1 MB) as content, anything else
+   * (≤ 20 MB) attached to a doc named after it (ADR-0025).
+   */
+  "docs.upload": {
+    input: { files: File[]; clientId?: string }
+    result: { ids: string[]; failed: { filename: string; message: string }[] }
+  }
+  /** Edits the draft; the worker autosaves after a short pause. */
+  "docs.edit": {
+    input: {
+      docId: string
+      title?: string
+      content?: string
+      clientId?: string
+    }
+    result: null
+  }
+  /** Save now (e.g. before leaving). Resolves when saved. */
+  "docs.flush": { input: { docId: string }; result: null }
+  /** Drop the local draft and load the latest version (after a conflict). */
+  "docs.reload": { input: { docId: string }; result: null }
+  "docs.delete": { input: { docId: string }; result: null }
+  "docs.attach": {
+    input: { docId: string; files: File[] }
+    result: {
+      uploaded: number
+      failed: { filename: string; message: string }[]
+    }
+  }
+  "docs.removeFile": { input: { docId: string; fileId: string }; result: null }
+  "members.remove": { input: { userId: string }; result: null }
+  "members.setRole": {
+    input: { userId: string; role: "OWNER" | "MEMBER" }
+    result: null
+  }
+  /** Optimistic toggle. */
+  "notifications.setEnabled": {
+    input: { kind: NotificationKindKey; enabled: boolean }
+    result: null
+  }
 }
 
 export type ViewKey = keyof ViewMap

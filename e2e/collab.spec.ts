@@ -1,5 +1,6 @@
 import { type Browser, expect, type Page, test } from "@playwright/test"
 import {
+  choose,
   collectErrors,
   createWorkspace,
   expectNoAxeViolations,
@@ -23,9 +24,7 @@ async function openNewTask(page: Page, title: string, client?: string) {
   const d = page.getByRole("dialog", { name: "New task" })
   await d.getByRole("textbox", { name: "Title", exact: true }).fill(title)
   if (client)
-    await d
-      .getByRole("combobox", { name: "Client" })
-      .selectOption({ label: client })
+    await choose(d, "Client", client)
   await d.getByRole("button", { name: "Create task" }).click()
   const drawer = page.getByRole("dialog", { name: title })
   await expect(drawer).toBeVisible()
@@ -134,9 +133,7 @@ test("subtasks, checklist, comments with mentions, attachments, activity", async
   await memberDrawer
     .getByRole("textbox", { name: "Add a comment" })
     .fill("Looks good,")
-  await memberDrawer
-    .getByRole("combobox", { name: "Mention someone" })
-    .selectOption({ label: owner.who.name })
+  await choose(memberDrawer, "Mention someone", owner.who.name)
   await memberDrawer.getByRole("button", { name: "Comment" }).click()
   await expect(
     memberDrawer.locator("mark", { hasText: `@${owner.who.name}` })

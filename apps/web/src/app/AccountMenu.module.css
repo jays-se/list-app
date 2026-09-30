@@ -1,0 +1,36 @@
+.trigger {
+  display: inline-flex;
+  padding: var(--spacingXXS);
+  border: none;
+  border-radius: var(--borderRadiusCircular);
+  background: transparent;
+  cursor: pointer;
+}
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  background: var(--colorSubtleBackgroundHover);
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingM);
+  min-width: 240px;
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
+  font-weight: var(--fontWeightSemibold);
+}
+
+.muted {
+  overflow: hidden;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

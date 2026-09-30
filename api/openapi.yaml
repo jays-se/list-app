@@ -23,6 +23,12 @@ tags:
     description: Clients tasks can be linked to (E8-S1).
   - name: collaboration
     description: Checklist, comments, attachments, history on a task (E4-S7..S9, E6).
+  - name: requests
+    description: Change requests - assignees propose, managers approve or reject, requesters withdraw (E5-S2, ADR-0023).
+  - name: notifications
+    description: In-app inbox and per-kind settings (E9, ADR-0023).
+  - name: docs
+    description: Markdown docs and their files (E11, ADR-0025). Any member edits; the creator or a workspace OWNER deletes.
   - name: blobs
     description: Local blob storage driver (BLOB_DRIVER=local). Token-authorized like S3 presigned URLs (ADR-0022).
 security:
@@ -62,6 +68,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Readiness"
+  /metrics:
+    get:
+      tags: [system]
+      operationId: getMetrics
+      security: []
+      summary: Prometheus metrics (text format). Not proxied by Caddy; METRICS_TOKEN makes it Bearer-protected (ADR-0025)
+      responses:
+        "200":
+          description: Metrics
+          content:
+            text/plain:
+              schema: { type: string }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/client-errors:
+    post:
+      tags: [system]
+      operationId: reportClientError
+      security: []
+      summary: The worker reports web-app errors here; logged with the request id, rate limited (E12-S1)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientErrorReport" }
+      responses:
+        "204":
+          description: Logged
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/system/info:
     get:
       tags: [system]
@@ -267,6 +305,76 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/InviteCodeResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/current/leave:
+    post:
+      tags: [workspaces]
+      operationId: leaveWorkspace
+      summary: Leave the active workspace; 409 last_owner for the only owner (E3-S6)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Left; sessions move to another workspace or none
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/current/members/{userId}:
+    parameters:
+      - { name: userId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [workspaces]
+      operationId: updateMember
+      summary: Change a member's role (OWNER only); the last owner can't be demoted
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMemberRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [workspaces]
+      operationId: removeMember
+      summary: Remove a member (OWNER only); their assignments, ownerships and pending requests go too
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Removed
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/bulk:
+    post:
+      tags: [tasks]
+      operationId: bulkCreateTasks
+      summary: Quick capture - create many tasks at once, all or nothing (E10-S1, ADR-0024)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: 8-200 characters. A retry with the same key and body returns the first response.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkCreateTasksRequest" }
+      responses:
+        "201":
+          description: Created (or replayed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskList" }
         default:
           $ref: "#/components/responses/Problem"
   /api/v1/tasks:
@@ -735,6 +843,313 @@ paths:
           description: Deleted
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/requests:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [requests]
+      operationId: createChangeRequest
+      summary: Propose a change (assignees who can't manage the task; ADR-0023)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateChangeRequest" }
+      responses:
+        "201":
+          description: Requested; the task with its requests
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/requests/{requestId}/approve:
+    parameters:
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      tags: [requests]
+      operationId: approveChangeRequest
+      summary: Apply a pending request (manage permission); 409 request_stale when the task moved on
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: Approved and applied
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/requests/{requestId}/reject:
+    parameters:
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      tags: [requests]
+      operationId: rejectChangeRequest
+      summary: Decline a pending request with an optional note (manage permission)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewChangeRequest" }
+      responses:
+        "200":
+          description: Rejected
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/requests/{requestId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      tags: [requests]
+      operationId: cancelChangeRequest
+      summary: Withdraw your own pending request
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: Withdrawn
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: The caller's newest 100 notifications in the active workspace, plus the unread count
+      parameters:
+        - { name: unread, in: query, required: false, schema: { type: string, enum: ["true"] } }
+      responses:
+        "200":
+          description: Inbox
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationList" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/notifications/{notificationId}/read:
+    parameters:
+      - { name: notificationId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [notifications]
+      operationId: markNotificationRead
+      summary: Mark one notification read (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Read
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/notifications/read-all:
+    post:
+      tags: [notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark every notification in the active workspace read
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Read
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/notifications/settings:
+    get:
+      tags: [notifications]
+      operationId: getNotificationSettings
+      summary: Per-kind in-app delivery settings (default enabled)
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationSettings" }
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      tags: [notifications]
+      operationId: updateNotificationSettings
+      summary: Turn kinds on or off; returns every kind
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationSettings" }
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationSettings" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/docs:
+    get:
+      tags: [docs]
+      operationId: listDocs
+      summary: Docs, most recently edited first (optionally for one client)
+      parameters:
+        - { name: clientId, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: Docs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocList" }
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [docs]
+      operationId: createDoc
+      summary: Create a doc
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateDocRequest" }
+      responses:
+        "201":
+          description: Created
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/docs/{docId}:
+    parameters:
+      - { name: docId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [docs]
+      operationId: getDoc
+      summary: One doc with its files
+      responses:
+        "200":
+          description: Doc
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      tags: [docs]
+      operationId: updateDoc
+      summary: Change present fields; 409 when If-Match is stale, 428 when missing
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateDocRequest" }
+      responses:
+        "200":
+          description: Updated
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [docs]
+      operationId: deleteDoc
+      summary: Delete a doc and its files (creator or workspace OWNER)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Deleted
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/docs/{docId}/files:
+    parameters:
+      - { name: docId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [docs]
+      operationId: startDocFileUpload
+      summary: Reserve an upload slot (≤ 10 files of ≤ 20 MB per doc)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAttachmentRequest" }
+      responses:
+        "201":
+          description: Pending file + where to PUT the bytes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentUploadResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/doc-files/{fileId}:
+    parameters:
+      - { name: fileId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [docs]
+      operationId: downloadDocFile
+      summary: Download (browser navigation); redirects to a short-lived signed URL
+      responses:
+        "302":
+          description: Redirect to the file
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [docs]
+      operationId: deleteDocFile
+      summary: Remove a file from a doc
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Removed
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/doc-files/{fileId}/complete:
+    parameters:
+      - { name: fileId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [docs]
+      operationId: completeDocFileUpload
+      summary: Confirm the upload; the server checks the stored size
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttachmentResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -748,6 +1163,11 @@ components:
   parameters:
     AttachmentId:
       name: attachmentId
+      in: path
+      required: true
+      schema: { type: string }
+    RequestId:
+      name: requestId
       in: path
       required: true
       schema: { type: string }
@@ -882,6 +1302,31 @@ components:
         image: { type: [string, "null"] }
         role: { $ref: "#/components/schemas/Role" }
         joinedAt: { type: string, format: date-time }
+    MemberResponse:
+      type: object
+      required: [member]
+      properties:
+        member: { $ref: "#/components/schemas/Member" }
+    UpdateMemberRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+    TaskSource:
+      type: string
+      enum: [MEETING_NOTE, PERSONAL]
+    BulkCreateTasksRequest:
+      type: object
+      required: [source, startDate, endDate, titles]
+      properties:
+        source: { $ref: "#/components/schemas/TaskSource" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        titles:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: string }
     MemberList:
       type: object
       required: [members]
@@ -920,14 +1365,15 @@ components:
     TaskViewer:
       type: object
       description: The caller's permissions on this task (E5-S1).
-      required: [canManage, canManageOwners, isAssignee]
+      required: [canManage, canManageOwners, isAssignee, canRequest]
       properties:
         canManage: { type: boolean }
         canManageOwners: { type: boolean }
         isAssignee: { type: boolean }
+        canRequest: { type: boolean, description: "An assignee who can't manage: proposes changes as requests (E5-S2)" }
     TaskSummary:
       type: object
-      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt, client, parent, counts]
+      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt, client, parent, counts, source, viewer]
       properties:
         id: { type: string }
         title: { type: string }
@@ -954,9 +1400,15 @@ components:
             - { $ref: "#/components/schemas/TaskRef" }
             - { type: "null" }
         counts: { $ref: "#/components/schemas/TaskCounts" }
+        source:
+          description: Set on tasks made by quick capture
+          anyOf:
+            - { $ref: "#/components/schemas/TaskSource" }
+            - { type: "null" }
+        viewer: { $ref: "#/components/schemas/TaskViewer" }
     Task:
       type: object
-      required: [id, title, description, status, priority, startDate, endDate, dueDate, assignees, owners, labels, createdBy, createdAt, updatedAt, version, viewer, client, parent, subtasks, checklist, comments, attachments]
+      required: [id, title, description, status, priority, startDate, endDate, dueDate, assignees, owners, labels, createdBy, createdAt, updatedAt, version, viewer, client, parent, subtasks, checklist, comments, attachments, requests]
       properties:
         id: { type: string }
         title: { type: string }
@@ -1000,6 +1452,10 @@ components:
         attachments:
           type: array
           items: { $ref: "#/components/schemas/Attachment" }
+        requests:
+          description: Newest first (at most 100)
+          type: array
+          items: { $ref: "#/components/schemas/ChangeRequest" }
     TaskList:
       type: object
       required: [tasks]
@@ -1091,8 +1547,9 @@ components:
         status: { $ref: "#/components/schemas/TaskStatus" }
     TaskCounts:
       type: object
-      required: [subtasks, subtasksDone, checklist, checklistDone, comments, attachments]
+      required: [subtasks, subtasksDone, checklist, checklistDone, comments, attachments, pendingRequests]
       properties:
+        pendingRequests: { type: integer }
         subtasks: { type: integer }
         subtasksDone: { type: integer }
         checklist: { type: integer }
@@ -1199,7 +1656,8 @@ components:
       type: string
       enum: [CREATED, STATUS, UPDATED, ASSIGNEE_ADDED, ASSIGNEE_REMOVED, LABEL_ADDED, LABEL_REMOVED, OWNER_ADDED, OWNER_REMOVED,
              CHECKLIST_ADDED, CHECKLIST_CHECKED, CHECKLIST_UNCHECKED, CHECKLIST_RENAMED, CHECKLIST_ASSIGNED, CHECKLIST_UNASSIGNED, CHECKLIST_REMOVED,
-             COMMENTED, ATTACHMENT_ADDED, ATTACHMENT_REMOVED, SUBTASK_ADDED]
+             COMMENTED, ATTACHMENT_ADDED, ATTACHMENT_REMOVED, SUBTASK_ADDED,
+             REQUEST_CREATED, REQUEST_APPROVED, REQUEST_REJECTED, REQUEST_CANCELED]
     TaskEvent:
       type: object
       required: [id, kind, field, from, to, subject, actor, createdAt]
@@ -1235,8 +1693,9 @@ components:
           items: { $ref: "#/components/schemas/StatusStage" }
     Client:
       type: object
-      required: [id, name, email, phone, color, notes, taskCount]
+      required: [id, name, email, phone, color, notes, taskCount, docCount]
       properties:
+        docCount: { type: integer }
         id: { type: string }
         name: { type: string }
         email: { type: [string, "null"] }
@@ -1265,6 +1724,200 @@ components:
         phone: { type: [string, "null"] }
         color: { $ref: "#/components/schemas/LabelColor" }
         notes: { type: [string, "null"] }
+    ChangeRequestKind:
+      type: string
+      enum: [UPDATE, ASSIGNEE_ADD, ASSIGNEE_REMOVE, SUBTASK_ADD, CHECKLIST_ADD, CHECKLIST_UPDATE, CHECKLIST_REMOVE, ATTACHMENT_REMOVE]
+    ChangeRequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, CANCELED]
+    ChangeRequestPayload:
+      type: object
+      description: >-
+        Flat payload; members by kind — UPDATE: field (status|startDate|endDate|dueDate), value ("" clears dueDate),
+        from (server-set); ASSIGNEE_*: userId; SUBTASK_ADD / CHECKLIST_ADD: title;
+        CHECKLIST_UPDATE: itemId + title and/or done; CHECKLIST_REMOVE: itemId; ATTACHMENT_REMOVE: attachmentId.
+      properties:
+        field: { type: string }
+        value: { type: string }
+        from: { type: string }
+        userId: { type: string }
+        title: { type: string }
+        itemId: { type: string }
+        done: { type: boolean }
+        attachmentId: { type: string }
+    ChangeRequest:
+      type: object
+      required: [id, kind, status, payload, summary, note, reviewNote, requester, reviewer, createdAt, decidedAt]
+      properties:
+        id: { type: string }
+        kind: { $ref: "#/components/schemas/ChangeRequestKind" }
+        status: { $ref: "#/components/schemas/ChangeRequestStatus" }
+        payload: { $ref: "#/components/schemas/ChangeRequestPayload" }
+        summary: { type: string, description: 'e.g. "Change status to Done"' }
+        note: { type: [string, "null"] }
+        reviewNote: { type: [string, "null"] }
+        requester:
+          description: null when the person is no longer a member
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        reviewer:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: [string, "null"], format: date-time }
+    CreateChangeRequest:
+      type: object
+      required: [kind, payload]
+      properties:
+        kind: { $ref: "#/components/schemas/ChangeRequestKind" }
+        payload: { $ref: "#/components/schemas/ChangeRequestPayload" }
+        note: { type: [string, "null"], maxLength: 1000 }
+    ReviewChangeRequest:
+      type: object
+      properties:
+        note: { type: [string, "null"], maxLength: 1000 }
+    NotificationKind:
+      type: string
+      enum: [MENTION, ASSIGNED, STATUS, DUE, REQUEST, REVIEWED]
+    Notification:
+      type: object
+      required: [id, kind, task, taskTitle, actor, detail, commentBody, createdAt, readAt]
+      properties:
+        id: { type: string }
+        kind: { $ref: "#/components/schemas/NotificationKind" }
+        task:
+          description: null once the task is deleted
+          anyOf:
+            - { $ref: "#/components/schemas/NotificationTask" }
+            - { type: "null" }
+        taskTitle: { type: [string, "null"], description: The title when notified }
+        actor:
+          description: null for DUE, or when the person is no longer a member
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        detail: { type: string, description: 'Sentence after the actor, e.g. "assigned you"' }
+        commentBody: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: [string, "null"], format: date-time }
+    NotificationTask:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string }
+    NotificationList:
+      type: object
+      required: [notifications, unread]
+      properties:
+        notifications:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        unread: { type: integer }
+    NotificationSetting:
+      type: object
+      required: [kind, enabled]
+      properties:
+        kind: { $ref: "#/components/schemas/NotificationKind" }
+        enabled: { type: boolean }
+    NotificationSettings:
+      type: object
+      required: [settings]
+      properties:
+        settings:
+          type: array
+          items: { $ref: "#/components/schemas/NotificationSetting" }
+    DocViewer:
+      type: object
+      required: [canDelete]
+      properties:
+        canDelete: { type: boolean }
+    DocSummary:
+      type: object
+      required: [id, title, excerpt, client, createdBy, updatedBy, updatedAt, version, fileCount]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        excerpt: { type: string, description: The first 280 characters of the markdown }
+        client:
+          anyOf:
+            - { $ref: "#/components/schemas/ClientRef" }
+            - { type: "null" }
+        createdBy:
+          description: null when the person is no longer a member
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        updatedBy:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+        fileCount: { type: integer }
+    Doc:
+      type: object
+      required: [id, title, content, client, createdBy, updatedBy, createdAt, updatedAt, version, files, viewer]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string, description: "Markdown (at most 200,000 characters)" }
+        client:
+          anyOf:
+            - { $ref: "#/components/schemas/ClientRef" }
+            - { type: "null" }
+        createdBy:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        updatedBy:
+          anyOf:
+            - { $ref: "#/components/schemas/PersonRef" }
+            - { type: "null" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+        files:
+          type: array
+          items: { $ref: "#/components/schemas/Attachment" }
+        viewer: { $ref: "#/components/schemas/DocViewer" }
+    DocList:
+      type: object
+      required: [docs]
+      properties:
+        docs:
+          type: array
+          items: { $ref: "#/components/schemas/DocSummary" }
+    DocResponse:
+      type: object
+      required: [doc]
+      properties:
+        doc: { $ref: "#/components/schemas/Doc" }
+    CreateDocRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, maxLength: 200 }
+        content: { type: string }
+        clientId: { type: [string, "null"] }
+    UpdateDocRequest:
+      type: object
+      description: Only present fields change.
+      properties:
+        title: { type: string, maxLength: 200 }
+        content: { type: string }
+        clientId: { type: [string, "null"] }
+    ClientErrorReport:
+      type: object
+      required: [source, message]
+      properties:
+        source: { type: string, enum: [worker, main] }
+        message: { type: string, maxLength: 1000 }
+        stack: { type: string, maxLength: 4000 }
+        url: { type: string, maxLength: 500 }
+        release: { type: string, maxLength: 50 }
     FieldError:
       type: object
       required: [field, message]

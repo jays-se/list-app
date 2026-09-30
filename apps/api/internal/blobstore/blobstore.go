@@ -5,6 +5,8 @@ package blobstore
 import (
 	"context"
 	"errors"
+	"path"
+	"strings"
 	"time"
 )
 
@@ -31,4 +33,19 @@ type Store interface {
 	// Stat returns ErrNotFound if nothing was uploaded.
 	Stat(ctx context.Context, key string) (Object, error)
 	Delete(ctx context.Context, key string) error
+}
+
+// CleanFilename drops any client path and control characters.
+func CleanFilename(name string) string {
+	name = path.Base(strings.ReplaceAll(strings.TrimSpace(name), `\`, "/"))
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, name)
+	if name == "." || name == "/" {
+		return ""
+	}
+	return name
 }

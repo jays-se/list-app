@@ -78,12 +78,13 @@ func Validate(in mdl.ClientInput) (mdl.ClientInput, error) {
 
 const clientSelect = `
 SELECT c.id, c.name, c.email, c.phone, c.color, c.notes,
-       (SELECT count(*) FROM tasks t WHERE t.client_id = c.id)
+       (SELECT count(*) FROM tasks t WHERE t.client_id = c.id),
+       (SELECT count(*) FROM docs d WHERE d.client_id = c.id)
   FROM clients c`
 
 func scan(r pgx.Row) (mdl.Client, error) {
 	var c mdl.Client
-	err := r.Scan(&c.ID, &c.Name, &c.Email, &c.Phone, &c.Color, &c.Notes, &c.TaskCount)
+	err := r.Scan(&c.ID, &c.Name, &c.Email, &c.Phone, &c.Color, &c.Notes, &c.TaskCount, &c.DocCount)
 	return c, err
 }
 

@@ -5,11 +5,13 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { RouterProvider } from "react-router"
 import { startDataPlane } from "./app/data-plane.ts"
+import { installErrorReporting } from "./app/error-reporting.ts"
 import { createAppRouter } from "./app/router.tsx"
 
 applyTheme(loadTheme())
 
 const bridge = startDataPlane()
+installErrorReporting(bridge)
 const router = createAppRouter(bridge)
 const root = document.getElementById("root")
 if (!root) throw new Error("#root is missing from index.html")

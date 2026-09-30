@@ -67,8 +67,15 @@ func TestLoadProduction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.AuthProvider != AuthProviderGoogle || !cfg.CookieSecure {
-		t.Fatalf("prod should default to google + secure cookies: %+v", cfg)
+	if cfg.AuthProvider != AuthProviderGoogle || !cfg.CookieSecure || !cfg.RateLimits {
+		t.Fatalf("prod should default to google, secure cookies and rate limits: %+v", cfg)
+	}
+	cfg, err = Load(env(with(prodOK, map[string]string{"RATE_LIMITS": "off", "TRUST_PROXY_HEADERS": "true", "METRICS_TOKEN": "t"})))
+	if err != nil || cfg.RateLimits || !cfg.TrustProxyHeaders || cfg.MetricsToken != "t" {
+		t.Fatalf("overrides: %+v %v", cfg, err)
+	}
+	if dev, _ := Load(env(map[string]string{})); dev.RateLimits {
+		t.Fatal("dev defaults to no rate limits")
 	}
 }
 
@@ -87,6 +94,7 @@ func TestLoadRejectsInvalid(t *testing.T) {
 		"prod over http":         with(prodOK, map[string]string{"PUBLIC_BASE_URL": "http://list.example.com"}),
 		"unknown blob driver":    {"BLOB_DRIVER": "ftp"},
 		"s3 without settings":    {"BLOB_DRIVER": "s3"},
+		"bad rate limits":        {"RATE_LIMITS": "maybe"},
 	}
 	for name, values := range cases {
 		t.Run(name, func(t *testing.T) {

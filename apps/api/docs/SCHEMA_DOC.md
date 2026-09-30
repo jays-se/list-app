@@ -46,4 +46,24 @@ Every table has `workspace_id` and a `<table>_tenant` RLS policy (USING and WITH
 
 All tables have `workspace_id` and a `<table>_tenant` RLS policy.
 
-Feature tables (requests, docs, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.
+## Migration 0005: requests, outbox, notifications (Sprint 4, ADR-0023)
+| Table | Purpose | Notes |
+|---|---|---|
+| `change_requests` | Proposals by assignees | `kind` and `status` enums; `payload` jsonb (flat, per kind); `summary` is server text ("Change status to Done"); `note`/`review_note` ≤ 1000; `base_version` records the task version at request time. Cascades with the task. RLS. |
+| `outbox` | Transactional outbox | **System table, no RLS**, never exposed to handlers. `available_at`/`attempts`/`last_error` drive retries; `processed_at` marks done. |
+| `notifications` | In-app inbox | `UNIQUE (user_id, dedupe_key)` makes delivery idempotent. `task_id` is set to NULL on task delete; `task_title` keeps the title. RLS. |
+| `notification_settings` | Per-user switches | `(user_id, kind)`; no row = enabled. User-scoped, not workspace-scoped. |
+
+## Migration 0006: capture and idempotency (Sprint 5, ADR-0024)
+| Table / column | Purpose | Notes |
+|---|---|---|
+| `tasks.source` | Where a captured task came from | `MEETING_NOTE`, `PERSONAL` or NULL (made in the app) |
+| `idempotency_keys` | Safe retries for `POST /tasks/bulk` | PK `(user_id, key)`, `request_hash`, `response` stored as **text** so a replay is byte-identical, `workspace_id`. RLS. Rows are written in the same transaction as the tasks. Pruning old rows is an E12 job. |
+
+## Migration 0007: docs (Sprint 6, ADR-0025)
+| Table | Purpose | Notes |
+|---|---|---|
+| `docs` | Markdown docs | `title` is 1–200 characters and `content` at most 200,000. `client_id` is set to NULL when the client is deleted. `created_by` and `updated_by` show "A former member" once the person has left. `version` is used for If-Match. RLS. |
+| `doc_files` | Files on a doc | Same lifecycle as `attachments` (PENDING, then READY), with `size` at most 20 MB and at most 10 per doc (enforced in the service). Cascades with the doc. RLS. |
+
+All MVP tables are now in place. Pruning `idempotency_keys` and stale PENDING uploads is a follow-up job. Each adds a numbered migration and a section here.

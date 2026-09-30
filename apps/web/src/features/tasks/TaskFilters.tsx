@@ -1,6 +1,6 @@
 import type { TaskFiltersVM } from "@app/protocol"
-import { Button, Checkbox, Select } from "@app/ui-kit"
-import { useId } from "react"
+import { Button, Checkbox, Dropdown } from "@app/ui-kit"
+import { swatchOptions } from "./pickers.tsx"
 import styles from "./TaskFilters.module.css"
 
 type Key = "status" | "mine" | "assigneeId" | "labelId" | "clientId"
@@ -23,12 +23,6 @@ export function TaskFilters(props: {
   const active = (
     ["status", "mine", "assigneeId", "labelId", "clientId"] as const
   ).some((k) => value(k))
-  const ids = {
-    status: useId(),
-    assignee: useId(),
-    label: useId(),
-    client: useId(),
-  }
   return (
     <section
       key={search.toString()}
@@ -36,73 +30,41 @@ export function TaskFilters(props: {
       aria-label="Filters"
     >
       <span className={styles.item}>
-        <label htmlFor={ids.status} className={styles.label}>
-          Status
-        </label>
-        <Select
-          id={ids.status}
+        <Dropdown
+          aria-label="Status"
           size="small"
-          defaultValue={value("status")}
-          onChange={(e) => onChange("status", e.target.value)}
-        >
-          {filters.statusOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          value={value("status")}
+          options={swatchOptions(filters.statusOptions)}
+          onChange={(v) => onChange("status", v)}
+        />
       </span>
       <span className={styles.item}>
-        <label htmlFor={ids.assignee} className={styles.label}>
-          Assignee
-        </label>
-        <Select
-          id={ids.assignee}
+        <Dropdown
+          aria-label="Assignee"
           size="small"
-          defaultValue={mine ? "" : value("assigneeId")}
+          value={mine ? "" : value("assigneeId")}
           disabled={mine}
-          onChange={(e) => onChange("assigneeId", e.target.value)}
-        >
-          {filters.assigneeOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          options={swatchOptions(filters.assigneeOptions)}
+          onChange={(v) => onChange("assigneeId", v)}
+        />
       </span>
       <span className={styles.item}>
-        <label htmlFor={ids.label} className={styles.label}>
-          Label
-        </label>
-        <Select
-          id={ids.label}
+        <Dropdown
+          aria-label="Label"
           size="small"
-          defaultValue={value("labelId")}
-          onChange={(e) => onChange("labelId", e.target.value)}
-        >
-          {filters.labelOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          value={value("labelId")}
+          options={swatchOptions(filters.labelOptions)}
+          onChange={(v) => onChange("labelId", v)}
+        />
       </span>
       <span className={styles.item}>
-        <label htmlFor={ids.client} className={styles.label}>
-          Client
-        </label>
-        <Select
-          id={ids.client}
+        <Dropdown
+          aria-label="Client"
           size="small"
-          defaultValue={value("clientId")}
-          onChange={(e) => onChange("clientId", e.target.value)}
-        >
-          {filters.clientOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          value={value("clientId")}
+          options={swatchOptions(filters.clientOptions)}
+          onChange={(v) => onChange("clientId", v)}
+        />
       </span>
       <Checkbox
         label="Assigned to me"

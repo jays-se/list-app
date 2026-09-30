@@ -175,6 +175,13 @@ describe("row activity text", () => {
       updatedAt: "2026-09-30T00:00:00Z",
       client: null,
       parent: null,
+      source: null,
+      viewer: {
+        canManage: true,
+        canManageOwners: true,
+        isAssignee: false,
+        canRequest: false,
+      },
     }
     const counts = (comments: number, attachments: number) => ({
       subtasks: 0,
@@ -183,6 +190,7 @@ describe("row activity text", () => {
       checklistDone: 0,
       comments,
       attachments,
+      pendingRequests: 0,
     })
     expect(
       toTaskRowVM({ ...base, counts: counts(1, 1) }, TODAY, "en").activityText
@@ -193,5 +201,81 @@ describe("row activity text", () => {
     expect(
       toTaskRowVM({ ...base, counts: counts(0, 0) }, TODAY, "en").activityText
     ).toBeNull()
+  })
+})
+
+describe("history text: remaining kinds", () => {
+  it.each([
+    [
+      ev({ kind: "UPDATED", field: "description", to: "x" }),
+      "updated the description",
+    ],
+    [
+      ev({ kind: "UPDATED", field: "description", to: null }),
+      "removed the description",
+    ],
+    [
+      ev({ kind: "UPDATED", field: "client", from: "A", to: null }),
+      "unlinked client A",
+    ],
+    [
+      ev({ kind: "UPDATED", field: "client", from: "A", to: "B" }),
+      "changed client from A to B",
+    ],
+    [
+      ev({
+        kind: "UPDATED",
+        field: "startDate",
+        from: "2026-10-01",
+        to: "2026-10-02",
+      }),
+      "changed the start date from 1 Oct to 2 Oct",
+    ],
+    [ev({ kind: "ASSIGNEE_REMOVED", subject: "Grace" }), "unassigned Grace"],
+    [
+      ev({ kind: "REQUEST_CREATED", subject: "Change status to Done" }),
+      "requested: Change status to Done",
+    ],
+    [
+      ev({ kind: "REQUEST_APPROVED", subject: "Add subtask “A”" }),
+      "approved the request: Add subtask “A”",
+    ],
+    [
+      ev({ kind: "REQUEST_REJECTED", subject: "Clear due date", to: "No" }),
+      "rejected the request: Clear due date (No)",
+    ],
+    [
+      ev({ kind: "REQUEST_REJECTED", subject: "Clear due date" }),
+      "rejected the request: Clear due date",
+    ],
+    [
+      ev({ kind: "REQUEST_CANCELED", subject: "Clear due date" }),
+      "withdrew the request: Clear due date",
+    ],
+    [ev({ kind: "LABEL_ADDED", subject: "Bug" }), "added label Bug"],
+    [ev({ kind: "LABEL_REMOVED", subject: "Bug" }), "removed label Bug"],
+    [ev({ kind: "OWNER_ADDED", subject: "Max" }), "made Max an owner"],
+    [ev({ kind: "OWNER_REMOVED", subject: "Max" }), "removed Max as an owner"],
+    [
+      ev({ kind: "CHECKLIST_ADDED", subject: "Draft" }),
+      "added checklist item “Draft”",
+    ],
+    [ev({ kind: "CHECKLIST_UNCHECKED", subject: "Draft" }), "reopened “Draft”"],
+    [
+      ev({ kind: "CHECKLIST_UNASSIGNED", subject: "Draft" }),
+      "unassigned “Draft”",
+    ],
+    [
+      ev({ kind: "CHECKLIST_REMOVED", subject: "Draft" }),
+      "removed checklist item “Draft”",
+    ],
+    [ev({ kind: "COMMENTED", subject: "hi" }), "commented: “hi”"],
+    [
+      ev({ kind: "ATTACHMENT_REMOVED", subject: "a.txt" }),
+      "removed attachment a.txt",
+    ],
+    [ev({ kind: "SUBTASK_ADDED", subject: "Copy" }), "added subtask “Copy”"],
+  ])("%#", (e, text) => {
+    expect(eventText(e, TODAY, "en-GB")).toBe(text)
   })
 })

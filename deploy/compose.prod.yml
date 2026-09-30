@@ -1,0 +1,98 @@
+# Single-host production stack (E12-S4, ADR-0013, ADR-0025).
+#
+#   cp deploy/.env.example deploy/.env   # fill in secrets
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env up -d
+#
+# Images come from CI (GHCR), pinned by VERSION. Migrations run once
+# before the API starts. Nightly backups land in the `backups` volume.
+name: list-prod
+
+x-api-env: &api-env
+  APP_ENV: prod
+  APP_VERSION: ${VERSION:?set VERSION}
+  DATABASE_URL: postgres://list:${POSTGRES_PASSWORD:?}@db:5432/list?sslmode=disable
+  PUBLIC_BASE_URL: https://${DOMAIN:?set DOMAIN}
+  AUTH_PROVIDER: google
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?}
+  SESSION_SECRET: ${SESSION_SECRET:?at least 32 characters}
+  # Same-origin uploads through the API's signed blob routes (ADR-0022).
+  BLOB_DRIVER: local
+  BLOB_DIR: /data/blobs
+  TRUST_PROXY_HEADERS: "true"
+  RATE_LIMITS: "on"
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  LOG_LEVEL: info
+
+services:
+  web:
+    image: ghcr.io/${REPO:?set REPO, e.g. owner/list-app}/web:${VERSION}
+    environment:
+      DOMAIN: ${DOMAIN}
+      API_UPSTREAM: api:8080
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [api]
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/${REPO}/api:${VERSION}
+    environment: *api-env
+    volumes: [blobs:/data/blobs]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  migrate:
+    image: ghcr.io/${REPO}/api:${VERSION}
+    command: ["migrate", "up"]
+    environment: *api-env
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: list
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: list
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U list -d list"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # Nightly pg_dump + blob archive, kept for 14 days (restore drill: docs/release.md).
+  backup:
+    image: postgres:17
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - backups:/backups
+      - blobs:/data/blobs:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          stamp=$$(date -u +%Y%m%dT%H%M%SZ)
+          pg_dump -h db -U list -d list -Fc -f /backups/db-$$stamp.dump \
+            && tar -czf /backups/blobs-$$stamp.tgz -C /data blobs \
+            && echo "backup ok $$stamp" || echo "backup FAILED $$stamp"
+          find /backups -type f -mtime +14 -delete
+          sleep 86400
+        done
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  blobs:
+  backups:
+  caddy-data:
+  caddy-config:
