@@ -13,13 +13,15 @@ import (
 )
 
 // NewHandler builds the root handler: the module routes wrapped in the
-// standard middleware stack (outermost first).
-func NewHandler(log *slog.Logger, registrars ...RouteRegistrar) (http.Handler, *Router) {
+// standard middleware stack (outermost first). Extra middleware (e.g. CSRF)
+// runs innermost, after logging and recovery.
+func NewHandler(log *slog.Logger, registrars []RouteRegistrar, extra ...Middleware) (http.Handler, *Router) {
 	router := NewRouter()
 	for _, reg := range registrars {
 		reg.RegisterRoutes(router)
 	}
-	return Chain(router, RequestID(log), Recover(log), AccessLog(log), SecurityHeaders), router
+	stack := append([]Middleware{RequestID(log), Recover(log), AccessLog(log), SecurityHeaders}, extra...)
+	return Chain(router, stack...), router
 }
 
 // Serve runs the HTTP server until ctx is cancelled, then shuts down

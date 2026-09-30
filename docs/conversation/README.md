@@ -15,6 +15,7 @@ This folder records the discussions that shaped the product, one dated file per 
 | 4 | 2026-09-30 | Skills timing | Add skills upfront or along the way? | 3 process skills now, code-pattern skills written by the ticket that creates each pattern, plus a Definition of Done line. Confirmed in #6. | ✅ | — | [skills + index](2026-09-30-skills-timing-and-log-index.md) |
 | 5 | 2026-09-30 | Conversation overview | Keep an overview of conversations in a table. | This table. Updating it is part of workflow step 8. | ✅ | — | [skills + index](2026-09-30-skills-timing-and-log-index.md) |
 | 6 | 2026-09-30 | Sprint 0 | "yes and start sprint 0" | Skills confirmed. Sprint 0 delivered: worker data plane, in-house query engine, bridge, ui-kit foundations, Go API skeleton, migrations with RLS, CI. 134 unit + 5 e2e + Go/Postgres tests pass locally. | ✅ | 0016 | [sprint 0](2026-09-30-sprint-0.md) |
+| 7 | 2026-09-30 | Sprint 1 | "Start Sprint 1" | Sign-in (Google OIDC plus a dev provider, server sessions, CSRF), workspaces (create, join, switch, members, rotate) under RLS, OpenAPI codegen, compose stack, login, onboarding and settings UI. 161 unit + 9 e2e + Go/Postgres tests pass locally. | ✅ | 0017–0019 | [sprint 1](2026-09-30-sprint-1.md) |
 
 ## Open items across conversations
 | Item | Raised in | Status |
@@ -23,4 +24,5 @@ This folder records the discussions that shaped the product, one dated file per 
 | Brand colour for the design system | #2 | ⏳ open (placeholder colour scale in use) |
 | Confirm the skills approach | #4 | ✅ confirmed in #6 |
 | Push to a GitHub remote so CI actually runs | #6 | ⏳ open (no remote yet) |
-| Install Docker, or keep the portable-Postgres workflow for E0-S4 | #6 | ⏳ open |
+| Install Docker, or keep the portable-Postgres workflow for E0-S4 | #6, #7 | ⏳ open (compose written, not run) |
+| Google OAuth client credentials for real sign-in | #7 | ⏳ open |

@@ -17,7 +17,8 @@ import type { QueryOptions, QuerySnapshot } from "@app/query"
 export interface KernelOptions {
   views: Readonly<Record<string, ViewDefinition<unknown, unknown>>>
   actions: Readonly<Record<string, ActionDefinition<unknown, unknown>>>
-  context: DomainContext
+  /** Everything but `resetData`, which the kernel provides itself. */
+  context: Omit<DomainContext, "resetData">
   post: (message: ToMain) => void
 }
 
@@ -43,7 +44,7 @@ export class WorkerKernel {
   private readonly ctx: DomainContext
 
   constructor(private readonly options: KernelOptions) {
-    this.ctx = options.context
+    this.ctx = { ...options.context, resetData: () => this.reset() }
     options.post({ kind: "push", topic: "ready", data: {} })
   }
 
@@ -140,7 +141,8 @@ export class WorkerKernel {
     }
   }
 
-  private reset() {
+  /** Clears every query and resubscribes live views (ADR-0019). */
+  reset(): void {
     const subs = [...this.subs.values()]
     for (const sub of subs) for (const off of sub.unsubscribes) off()
     this.ctx.client.clearAll()

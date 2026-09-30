@@ -1,0 +1,55 @@
+.page {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--spacingL);
+}
+
+.corner {
+  position: absolute;
+  top: var(--spacingL);
+  right: var(--spacingL);
+}
+
+.card {
+  display: grid;
+  gap: var(--spacingM);
+  width: min(400px, 100%);
+  padding: var(--spacingXXXL) var(--spacingXXL);
+  border-radius: var(--borderRadiusXLarge);
+  background: var(--colorNeutralBackground1);
+  box-shadow: var(--shadow16);
+}
+
+.brand {
+  margin: 0;
+  color: var(--colorBrandForeground1);
+  font-weight: var(--fontWeightBold);
+  letter-spacing: 0.02em;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.lead {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}
+
+.error {
+  margin: 0;
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
+}
+
+.cta {
+  width: 100%;
+  margin-top: var(--spacingS);
+}

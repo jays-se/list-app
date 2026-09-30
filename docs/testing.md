@@ -15,7 +15,9 @@ Specifics:
 - **Main-thread network guard:** e2e tests stub `fetch`, `XMLHttpRequest`, `WebSocket` and `EventSource` on the main thread (`e2e/smoke.spec.ts`).
 - **axe:** run it with `page.emulateMedia({ reducedMotion: "reduce" })` after a theme switch. Otherwise axe can sample colours mid-transition.
 - **Contrast** is unit-tested from the tokens (`packages/ui-kit/src/tokens/contrast.test.ts`). Add a pair whenever you add a foreground/background role.
-- **Contract:** `TestContractMatchesOpenAPI` fails if a Go route and `api/openapi.yaml` disagree. CI's `oasdiff` job fails on breaking changes.
+- **Contract:** `internal/app/contract_test.go` fails if the Go routes (for both providers) and `api/openapi.yaml` disagree. CI's `oasdiff` job fails on breaking changes. `pnpm check:api` fails if the generated TS types are stale.
+- **API flows:** `internal/app/flow_test.go` drives real HTTP with cookie jars against Postgres: sign in through the dev provider, CSRF, validation, invite, rotate, switch and logout. The Google path is tested against an in-process OIDC server (`authsvc/google_test.go`).
+- **E2E needs a database:** `E2E_DATABASE_URL`. Tests create unique people and workspaces and never reset the DB (see the `write-e2e-test` skill).
 
 Rules:
 - Test view models and validators as pure functions, with no mocks.

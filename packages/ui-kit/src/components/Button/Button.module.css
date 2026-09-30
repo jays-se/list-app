@@ -18,6 +18,11 @@
     color var(--durationFaster) var(--curveEasyEase);
 }
 
+/* Anchors styled as buttons (LinkButton / buttonClass). */
+.link {
+  text-decoration: none;
+}
+
 .icon {
   display: inline-flex;
   flex-shrink: 0;

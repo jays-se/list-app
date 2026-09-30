@@ -76,3 +76,16 @@ func withSettings(ctx context.Context, pool *pgxpool.Pool, settings map[string]s
 	}
 	return nil
 }
+
+// SetTenant sets the RLS context inside an existing transaction, e.g. right
+// after inserting a new workspace whose id was not known when the
+// transaction began.
+func SetTenant(ctx context.Context, tx pgx.Tx, t Tenant) error {
+	if t.WorkspaceID == "" || t.UserID == "" {
+		return ErrNoTenant
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.workspace_id', $1, true), set_config('app.user_id', $2, true)`, t.WorkspaceID, t.UserID); err != nil {
+		return fmt.Errorf("db: set tenant: %w", err)
+	}
+	return nil
+}

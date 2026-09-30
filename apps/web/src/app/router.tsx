@@ -1,44 +1,75 @@
 import type { Bridge } from "@app/bridge"
 import { createBrowserRouter, type RouteObject } from "react-router"
+import { LoginPage } from "../features/auth/LoginPage.tsx"
 import { HomePage } from "../features/system/HomePage.tsx"
+import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
+import { WorkspaceSettingsPage } from "../features/workspace/WorkspaceSettingsPage.tsx"
 import { AppShell } from "./AppShell.tsx"
 import { NotFoundPage, RouteErrorPage } from "./ErrorPages.tsx"
+import { RequireSession } from "./SessionGate.tsx"
 
 /**
  * Loaders only warm the worker (`bridge.prefetch`); they never fetch or
- * return data (ADR-0004). Components read data with `useView`.
+ * return data (ADR-0004). Guards and pages read data with `useView`.
  */
-export function createAppRouter(bridge: Bridge) {
-  const routes: RouteObject[] = [
+export function createAppRoutes(bridge: Bridge): RouteObject[] {
+  const warm = () => {
+    bridge.prefetch("session.current", {})
+    return null
+  }
+  return [
+    { path: "/login", element: <LoginPage />, loader: warm },
     {
-      path: "/",
-      element: <AppShell />,
+      element: <RequireSession need="user" />,
       errorElement: <RouteErrorPage />,
+      loader: warm,
+      children: [{ path: "/onboarding", element: <OnboardingPage /> }],
+    },
+    {
+      element: <RequireSession need="workspace" />,
+      errorElement: <RouteErrorPage />,
+      loader: warm,
       children: [
         {
-          index: true,
-          element: <HomePage />,
-          loader: () => {
-            bridge.prefetch("system.info", {})
-            return null
-          },
-        },
-        ...(import.meta.env.DEV
-          ? [
-              {
-                path: "_design",
-                lazy: async () => {
-                  const { DesignGallery } = await import(
-                    "../features/design/DesignGallery.tsx"
-                  )
-                  return { Component: DesignGallery }
-                },
+          element: <AppShell />,
+          children: [
+            {
+              index: true,
+              element: <HomePage />,
+              loader: () => {
+                bridge.prefetch("system.info", {})
+                return null
               },
-            ]
-          : []),
-        { path: "*", element: <NotFoundPage /> },
+            },
+            {
+              path: "/settings/workspace",
+              element: <WorkspaceSettingsPage />,
+              loader: () => {
+                bridge.prefetch("workspace.members", {})
+                return null
+              },
+            },
+          ],
+        },
       ],
     },
+    ...(import.meta.env.DEV
+      ? [
+          {
+            path: "/_design",
+            lazy: async () => {
+              const { DesignGallery } = await import(
+                "../features/design/DesignGallery.tsx"
+              )
+              return { Component: DesignGallery }
+            },
+          },
+        ]
+      : []),
+    { path: "*", element: <NotFoundPage /> },
   ]
-  return createBrowserRouter(routes)
+}
+
+export function createAppRouter(bridge: Bridge) {
+  return createBrowserRouter(createAppRoutes(bridge))
 }

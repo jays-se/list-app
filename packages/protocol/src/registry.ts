@@ -1,3 +1,4 @@
+import type { MembersVM, SessionVM, WorkspaceRefVM } from "./views/session.ts"
 import type { SystemInfoVM } from "./views/system.ts"
 
 /**
@@ -7,11 +8,23 @@ import type { SystemInfoVM } from "./views/system.ts"
  */
 export interface ViewMap {
   "system.info": { params: Record<string, never>; data: SystemInfoVM }
+  "session.current": { params: Record<string, never>; data: SessionVM }
+  "workspace.members": { params: Record<string, never>; data: MembersVM }
 }
 
+type NoInput = Record<string, never>
+
 /** Every action (mutation/RPC) the worker can run: `input` in, `result` out. */
-// biome-ignore lint/complexity/noBannedTypes: entries arrive with the first mutation (E3/E4).
-export type ActionMap = {}
+export interface ActionMap {
+  "auth.logout": { input: NoInput; result: null }
+  "workspaces.create": { input: { name: string }; result: WorkspaceRefVM }
+  "workspaces.join": { input: { inviteCode: string }; result: WorkspaceRefVM }
+  "workspaces.switch": {
+    input: { workspaceId: string }
+    result: WorkspaceRefVM
+  }
+  "workspaces.rotateInvite": { input: NoInput; result: { inviteCode: string } }
+}
 
 export type ViewKey = keyof ViewMap
 export type ViewParams<K extends ViewKey> = ViewMap[K]["params"]

@@ -11,11 +11,18 @@ servers:
 tags:
   - name: system
     description: Liveness, readiness and service identity.
+  - name: auth
+    description: Sign-in (Google OIDC, or the dev provider outside prod), session, sign-out (ADR-0008, ADR-0017).
+  - name: workspaces
+    description: Tenancy - create, join, switch, members, invite code.
+security:
+  - sessionCookie: []
 paths:
   /healthz:
     get:
       tags: [system]
       operationId: getHealth
+      security: []
       summary: Liveness probe
       description: 200 while the process is serving HTTP. Never checks dependencies.
       responses:
@@ -29,6 +36,7 @@ paths:
     get:
       tags: [system]
       operationId: getReadiness
+      security: []
       summary: Readiness probe
       description: 200 when every dependency check passes, otherwise 503.
       responses:
@@ -48,6 +56,7 @@ paths:
     get:
       tags: [system]
       operationId: getSystemInfo
+      security: []
       summary: Service identity
       responses:
         "200":
@@ -58,7 +67,213 @@ paths:
                 $ref: "#/components/schemas/SystemInfo"
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/auth/google/login:
+    get:
+      tags: [auth]
+      operationId: startLogin
+      summary: Start sign-in (browser navigation)
+      security: []
+      parameters:
+        - name: returnTo
+          in: query
+          description: Same-site path to return to after sign-in (must start with "/", not "//").
+          schema: { type: string }
+      responses:
+        "302":
+          description: Redirect to the identity provider; sets the short-lived `oauth_flow` cookie.
+  /api/v1/auth/google/callback:
+    get:
+      tags: [auth]
+      operationId: completeLogin
+      summary: OAuth callback (browser navigation)
+      security: []
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        "302":
+          description: |
+            Success - sets `sid` and redirects to `returnTo` (or `/`).
+            Failure - redirects to `/login?error=state|denied|oauth|internal`.
+  /api/v1/auth/dev/authorize:
+    get:
+      tags: [auth]
+      operationId: devAuthorizeForm
+      summary: Dev identity provider form (only when AUTH_PROVIDER=dev; never in prod)
+      x-dev-only: true
+      security: []
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: nonce, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: HTML form
+          content:
+            text/html:
+              schema: { type: string }
+    post:
+      tags: [auth]
+      operationId: devAuthorizeSubmit
+      summary: Dev identity provider submit (form post)
+      x-dev-only: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [state, nonce, name, email]
+              properties:
+                state: { type: string }
+                nonce: { type: string }
+                name: { type: string }
+                email: { type: string }
+                deny: { type: string }
+      responses:
+        "302":
+          description: Redirect to the callback with a signed code (or error=access_denied).
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Current user
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Sign out (revokes the session)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Signed out; `sid` cleared.
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces:
+    get:
+      tags: [workspaces]
+      operationId: listWorkspaces
+      summary: My workspaces and the active one
+      responses:
+        "200":
+          description: Workspaces
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceList" }
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [workspaces]
+      operationId: createWorkspace
+      summary: Create a workspace (caller becomes OWNER; it becomes active)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/join:
+    post:
+      tags: [workspaces]
+      operationId: joinWorkspace
+      summary: Join by invite code (idempotent; it becomes active)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JoinWorkspaceRequest" }
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/switch:
+    post:
+      tags: [workspaces]
+      operationId: switchWorkspace
+      summary: Make one of my workspaces active
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SwitchWorkspaceRequest" }
+      responses:
+        "200":
+          description: Switched
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/current/members:
+    get:
+      tags: [workspaces]
+      operationId: listMembers
+      summary: Members of the active workspace
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberList" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/current/invite-code/rotate:
+    post:
+      tags: [workspaces]
+      operationId: rotateInviteCode
+      summary: Replace the invite code (OWNER only)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: New code
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InviteCodeResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+  parameters:
+    CsrfHeader:
+      name: X-Requested-With
+      in: header
+      required: true
+      description: Must be "app" on every unsafe request (CSRF defence, ADR-0008).
+      schema:
+        type: string
+        enum: [app]
   responses:
     Problem:
       description: Error
@@ -99,6 +314,90 @@ components:
         startedAt:
           type: string
           format: date-time
+    Role:
+      type: string
+      enum: [OWNER, MEMBER]
+    User:
+      type: object
+      required: [id, name, email, image]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        image: { type: [string, "null"] }
+    MeResponse:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+    Workspace:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+    ActiveWorkspace:
+      type: object
+      required: [id, name, role, inviteCode]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        inviteCode: { type: string }
+    WorkspaceList:
+      type: object
+      required: [workspaces, active]
+      properties:
+        workspaces:
+          type: array
+          items: { $ref: "#/components/schemas/Workspace" }
+        active:
+          anyOf:
+            - { $ref: "#/components/schemas/ActiveWorkspace" }
+            - { type: "null" }
+    WorkspaceResponse:
+      type: object
+      required: [workspace]
+      properties:
+        workspace: { $ref: "#/components/schemas/Workspace" }
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+    JoinWorkspaceRequest:
+      type: object
+      required: [inviteCode]
+      properties:
+        inviteCode: { type: string, minLength: 1 }
+    SwitchWorkspaceRequest:
+      type: object
+      required: [workspaceId]
+      properties:
+        workspaceId: { type: string }
+    Member:
+      type: object
+      required: [id, name, email, image, role, joinedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        image: { type: [string, "null"] }
+        role: { $ref: "#/components/schemas/Role" }
+        joinedAt: { type: string, format: date-time }
+    MemberList:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/Member" }
+    InviteCodeResponse:
+      type: object
+      required: [inviteCode]
+      properties:
+        inviteCode: { type: string }
     FieldError:
       type: object
       required: [field, message]

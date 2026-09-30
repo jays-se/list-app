@@ -8,6 +8,7 @@ import { Button, IconButton } from "./Button/Button.tsx"
 import { Checkbox } from "./Checkbox/Checkbox.tsx"
 import { Field } from "./Field/Field.tsx"
 import { Input, Textarea } from "./Input/Input.tsx"
+import { Select } from "./Select/Select.tsx"
 import { Spinner } from "./Spinner/Spinner.tsx"
 
 describe("Button", () => {
@@ -128,5 +129,26 @@ describe("theme", () => {
     expect(loadTheme()).toBe("hc")
     localStorage.setItem("app.theme", "purple")
     expect(loadTheme()).toBe("system")
+  })
+})
+
+describe("Select", () => {
+  it("is labelled by its Field and changes value", () => {
+    const onChange = vi.fn()
+    render(
+      <Field label="Workspace" hint="Switch any time">
+        <Select defaultValue="a" onChange={onChange}>
+          <option value="a">Acme</option>
+          <option value="b">Beta</option>
+        </Select>
+      </Field>
+    )
+    const select = screen.getByRole("combobox", {
+      name: "Workspace",
+    }) as HTMLSelectElement
+    expect(select.getAttribute("aria-describedby")).toBeTruthy()
+    fireEvent.change(select, { target: { value: "b" } })
+    expect(select.value).toBe("b")
+    expect(onChange).toHaveBeenCalledOnce()
   })
 })

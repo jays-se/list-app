@@ -1,4 +1,10 @@
-import { applyTheme, loadTheme, saveTheme, type ThemeName } from "@app/ui-kit"
+import {
+  applyTheme,
+  loadTheme,
+  Select,
+  saveTheme,
+  type ThemeName,
+} from "@app/ui-kit"
 import { useId, useState } from "react"
 import styles from "./ThemeSwitcher.module.css"
 
@@ -18,9 +24,9 @@ export function ThemeSwitcher() {
       <label htmlFor={id} className={styles.label}>
         Theme
       </label>
-      <select
+      <Select
         id={id}
-        className={styles.select}
+        size="small"
         value={theme}
         onChange={(event) => {
           const next = event.target.value as ThemeName
@@ -34,7 +40,7 @@ export function ThemeSwitcher() {
             {o.label}
           </option>
         ))}
-      </select>
+      </Select>
     </span>
   )
 }

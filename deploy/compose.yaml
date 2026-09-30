@@ -1,0 +1,73 @@
+# Local stack (E0-S4, ADR-0013). Same shape as the future single-host deploy.
+#
+#   pnpm stack:up     db + storage + migrate + api   (then `pnpm dev` for the web app)
+#   pnpm stack:full   + caddy serving apps/web/dist and proxying /api (run `pnpm build` first)
+#
+# Sign-in uses the built-in dev identity provider (ADR-0017): no Google
+# credentials needed. Never use these settings in production.
+name: list-app
+
+x-api-env: &api-env
+  APP_ENV: dev
+  AUTH_PROVIDER: dev
+  DATABASE_URL: postgres://list:list@db:5432/list?sslmode=disable
+  LOG_LEVEL: info
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: list
+      POSTGRES_PASSWORD: list
+      POSTGRES_DB: list
+    ports: ["5432:5432"]
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U list -d list"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # S3-compatible object storage for attachments (used from E2-S5).
+  storage:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: list
+      MINIO_ROOT_PASSWORD: list-dev-secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [storage-data:/data]
+
+  migrate:
+    build: ../apps/api
+    command: ["migrate", "up"]
+    environment: *api-env
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: ../apps/api
+    environment:
+      <<: *api-env
+      HTTP_ADDR: ":8080"
+      # `pnpm dev` serves the web app here and proxies /api to :8080.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:5173}
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    profiles: [full]
+    image: caddy:2
+    environment:
+      API_UPSTREAM: api:8080
+    ports: ["8088:80"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../apps/web/dist:/srv:ro
+    depends_on: [api]
+
+volumes:
+  db-data:
+  storage-data:
