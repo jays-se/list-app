@@ -13,8 +13,12 @@ import (
 	"github.com/intellicars/list-app/apps/api/internal/config"
 	"github.com/intellicars/list-app/apps/api/internal/modules/auth/authhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/auth/authsvc"
+	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelhdlr"
+	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemsvc"
+	"github.com/intellicars/list-app/apps/api/internal/modules/task/taskhdlr"
+	"github.com/intellicars/list-app/apps/api/internal/modules/task/tasksvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacehdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacesvc"
 )
@@ -55,8 +59,11 @@ func New(cfg config.Config, o Options) (http.Handler, *apiserver.Router) {
 
 	workspaces := workspacehdlr.NewWorkspaceHdlr(workspacesvc.NewWorkspaceSvc(o.Pool, authSvc, o.Log), auth, o.Log)
 
+	tasks := taskhdlr.NewTaskHdlr(tasksvc.NewTaskSvc(o.Pool, o.Log), workspaces, o.Log)
+	labels := labelhdlr.NewLabelHdlr(labelsvc.NewLabelSvc(o.Pool, o.Log), workspaces, o.Log)
+
 	return apiserver.NewHandler(o.Log,
-		[]apiserver.RouteRegistrar{system, auth, workspaces},
+		[]apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels},
 		apiserver.CSRF(cfg.PublicOrigin(), authhdlr.IsDevAuthorize),
 	)
 }

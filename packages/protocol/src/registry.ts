@@ -1,5 +1,15 @@
 import type { MembersVM, SessionVM, WorkspaceRefVM } from "./views/session.ts"
 import type { SystemInfoVM } from "./views/system.ts"
+import type {
+  LabelColorKey,
+  LabelsVM,
+  LabelVM,
+  TaskDetailVM,
+  TaskDraft,
+  TaskFormOptionsVM,
+  TaskListParams,
+  TaskListVM,
+} from "./views/tasks.ts"
 
 /**
  * Every view the worker can serve: `params` in, display-ready `data` out.
@@ -10,6 +20,13 @@ export interface ViewMap {
   "system.info": { params: Record<string, never>; data: SystemInfoVM }
   "session.current": { params: Record<string, never>; data: SessionVM }
   "workspace.members": { params: Record<string, never>; data: MembersVM }
+  "tasks.list": { params: TaskListParams; data: TaskListVM }
+  "tasks.detail": { params: { taskId: string }; data: TaskDetailVM }
+  "tasks.formOptions": {
+    params: Record<string, never>
+    data: TaskFormOptionsVM
+  }
+  "labels.list": { params: Record<string, never>; data: LabelsVM }
 }
 
 type NoInput = Record<string, never>
@@ -24,6 +41,20 @@ export interface ActionMap {
     result: WorkspaceRefVM
   }
   "workspaces.rotateInvite": { input: NoInput; result: { inviteCode: string } }
+  "tasks.create": { input: TaskDraft; result: { id: string } }
+  /** The worker diffs `draft` against the saved task and sends only changes. */
+  "tasks.save": {
+    input: { taskId: string; draft: TaskDraft }
+    result: { changed: boolean; version: number }
+  }
+  "tasks.delete": { input: { taskId: string }; result: null }
+  /** Refetch a task now (e.g. after a 409 conflict). */
+  "tasks.refresh": { input: { taskId: string }; result: null }
+  "labels.create": {
+    input: { name: string; color: LabelColorKey }
+    result: LabelVM
+  }
+  "labels.delete": { input: { labelId: string }; result: null }
 }
 
 export type ViewKey = keyof ViewMap

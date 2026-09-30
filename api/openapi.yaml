@@ -15,6 +15,10 @@ tags:
     description: Sign-in (Google OIDC, or the dev provider outside prod), session, sign-out (ADR-0008, ADR-0017).
   - name: workspaces
     description: Tenancy - create, join, switch, members, invite code.
+  - name: tasks
+    description: Action items in the active workspace (E4). Mutations need the manage permission (E5-S1).
+  - name: labels
+    description: Workspace labels (E8-S2).
 security:
   - sessionCookie: []
 paths:
@@ -259,13 +263,228 @@ paths:
               schema: { $ref: "#/components/schemas/InviteCodeResponse" }
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/tasks:
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      summary: Tasks in the active workspace (filtered; no pagination - see A2)
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/TaskStatus" } }
+        - { name: mine, in: query, description: "true = assigned to me (overrides assigneeId)", schema: { type: string, enum: ["true"] } }
+        - { name: assigneeId, in: query, schema: { type: string } }
+        - { name: labelId, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Tasks, due date first (no date last), then newest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskList" }
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [tasks]
+      operationId: createTask
+      summary: Create a task (caller becomes its creator)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTaskRequest" }
+      responses:
+        "201":
+          description: Created
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [tasks]
+      operationId: getTask
+      summary: One task with the caller's permissions
+      responses:
+        "200":
+          description: Task
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      tags: [tasks]
+      operationId: updateTask
+      summary: Change fields (only those present). Optimistic concurrency via If-Match.
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateTaskRequest" }
+      responses:
+        "200":
+          description: Updated
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [tasks]
+      operationId: deleteTask
+      summary: Delete a task
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Deleted
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/assignees:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    put:
+      tags: [tasks]
+      operationId: setTaskAssignees
+      summary: Replace assignees (workspace members only)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserIdsRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/owners:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    put:
+      tags: [tasks]
+      operationId: setTaskOwners
+      summary: Replace owners (creator only; the creator is never listed as an owner)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserIdsRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/{taskId}/labels:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    put:
+      tags: [tasks]
+      operationId: setTaskLabels
+      summary: Replace labels (labels of this workspace only)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LabelIdsRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/labels:
+    get:
+      tags: [labels]
+      operationId: listLabels
+      summary: Labels of the active workspace
+      responses:
+        "200":
+          description: Labels, alphabetical
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabelList" }
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [labels]
+      operationId: createLabel
+      summary: Create a label (any member)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateLabelRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabelResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/labels/{labelId}:
+    delete:
+      tags: [labels]
+      operationId: deleteLabel
+      summary: Delete a label (workspace OWNER only; removed from all tasks)
+      parameters:
+        - { name: labelId, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Deleted
+        default:
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
       type: apiKey
       in: cookie
       name: sid
+  headers:
+    ETag:
+      description: 'Task version, e.g. "3". Send it back in If-Match.'
+      schema: { type: string }
   parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: { type: string }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The ETag you edited from. A stale value returns 409 conflict; a missing one 428.
+      schema: { type: string }
     CsrfHeader:
       name: X-Requested-With
       in: header
@@ -398,6 +617,155 @@ components:
       required: [inviteCode]
       properties:
         inviteCode: { type: string }
+    TaskStatus:
+      type: string
+      enum: [BACKLOG, TODO, IN_PROGRESS, TESTING, DONE, CANCELED]
+    TaskPriority:
+      type: string
+      enum: [URGENT, HIGH, MEDIUM, LOW, NONE]
+    LabelColor:
+      type: string
+      enum: [gray, red, orange, yellow, green, teal, blue, purple, pink]
+    PersonRef:
+      type: object
+      required: [id, name, image]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        image: { type: [string, "null"] }
+    Label:
+      type: object
+      required: [id, name, color]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        color: { $ref: "#/components/schemas/LabelColor" }
+    TaskViewer:
+      type: object
+      description: The caller's permissions on this task (E5-S1).
+      required: [canManage, canManageOwners, isAssignee]
+      properties:
+        canManage: { type: boolean }
+        canManageOwners: { type: boolean }
+        isAssignee: { type: boolean }
+    TaskSummary:
+      type: object
+      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        priority: { $ref: "#/components/schemas/TaskPriority" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        dueDate: { type: [string, "null"], format: date }
+        assignees:
+          type: array
+          items: { $ref: "#/components/schemas/PersonRef" }
+        labels:
+          type: array
+          items: { $ref: "#/components/schemas/Label" }
+        createdBy: { $ref: "#/components/schemas/PersonRef" }
+        version: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    Task:
+      type: object
+      required: [id, title, description, status, priority, startDate, endDate, dueDate, assignees, owners, labels, createdBy, createdAt, updatedAt, version, viewer]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        priority: { $ref: "#/components/schemas/TaskPriority" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        dueDate: { type: [string, "null"], format: date }
+        assignees:
+          type: array
+          items: { $ref: "#/components/schemas/PersonRef" }
+        owners:
+          type: array
+          items: { $ref: "#/components/schemas/PersonRef" }
+        labels:
+          type: array
+          items: { $ref: "#/components/schemas/Label" }
+        createdBy: { $ref: "#/components/schemas/PersonRef" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+        viewer: { $ref: "#/components/schemas/TaskViewer" }
+    TaskList:
+      type: object
+      required: [tasks]
+      properties:
+        tasks:
+          type: array
+          items: { $ref: "#/components/schemas/TaskSummary" }
+    TaskResponse:
+      type: object
+      required: [task]
+      properties:
+        task: { $ref: "#/components/schemas/Task" }
+    CreateTaskRequest:
+      type: object
+      required: [title, startDate, endDate]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        priority: { $ref: "#/components/schemas/TaskPriority" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        dueDate: { type: [string, "null"], format: date }
+        assigneeIds:
+          type: array
+          items: { type: string }
+        labelIds:
+          type: array
+          items: { type: string }
+    UpdateTaskRequest:
+      type: object
+      description: Only the fields present are changed.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        priority: { $ref: "#/components/schemas/TaskPriority" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        dueDate: { type: [string, "null"], format: date }
+    UserIdsRequest:
+      type: object
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          items: { type: string }
+    LabelIdsRequest:
+      type: object
+      required: [labelIds]
+      properties:
+        labelIds:
+          type: array
+          items: { type: string }
+    LabelList:
+      type: object
+      required: [labels]
+      properties:
+        labels:
+          type: array
+          items: { $ref: "#/components/schemas/Label" }
+    LabelResponse:
+      type: object
+      required: [label]
+      properties:
+        label: { $ref: "#/components/schemas/Label" }
+    CreateLabelRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 40 }
+        color: { $ref: "#/components/schemas/LabelColor" }
     FieldError:
       type: object
       required: [field, message]

@@ -4,6 +4,7 @@ import {
   type ColorTokenName,
   darkColors,
   lightColors,
+  paletteKeys,
 } from "./alias.ts"
 
 function luminance(hex: string): number {
@@ -45,6 +46,22 @@ const pairs: Pair[] = [
   ["colorNeutralForegroundOnBrand", "colorStatusWarningBackground3", 4.5],
   ["colorNeutralForegroundOnBrand", "colorStatusSuccessBackground3", 4.5],
   ["colorNeutralForegroundOnBrand", "colorStatusInfoBackground3", 4.5],
+  // Label chips: text on tint, and the swatch as a UI boundary on the page.
+  ...paletteKeys.flatMap((k): Pair[] => {
+    const c = `${k[0]?.toUpperCase()}${k.slice(1)}`
+    return [
+      [
+        `colorPalette${c}Foreground2` as ColorTokenName,
+        `colorPalette${c}Background2` as ColorTokenName,
+        4.5,
+      ],
+      [
+        `colorPalette${c}BorderActive` as ColorTokenName,
+        "colorNeutralBackground1",
+        2.5,
+      ],
+    ]
+  }),
 ]
 
 describe.each([

@@ -13,7 +13,8 @@ export const workspaceKeys = {
 export function membersQuery(api: ApiClient): QueryOptions<MemberList> {
   return {
     key: workspaceKeys.members,
-    ttl: 60_000,
+    // Others join/leave without our actions: show cached, revalidate on open.
+    ttl: 0,
     fetcher: async ({ signal }) =>
       decodeMemberList(
         await api.get("/workspaces/current/members", { signal })

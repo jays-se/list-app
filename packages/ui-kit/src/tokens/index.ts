@@ -1,4 +1,8 @@
-import { type ColorTokenName, colorTokenNames } from "./alias.ts"
+import {
+  type ColorTokenName,
+  colorTokenNames,
+  paletteTokenNames,
+} from "./alias.ts"
 import {
   foundations,
   lightShadows,
@@ -15,6 +19,9 @@ export {
   darkColors,
   highContrastColors,
   lightColors,
+  type PaletteKey,
+  paletteKeys,
+  paletteTokenNames,
 } from "./alias.ts"
 
 type TokenName =
@@ -26,6 +33,7 @@ type TokenName =
 export const tokens = Object.fromEntries(
   [
     ...colorTokenNames,
+    ...paletteTokenNames,
     ...Object.keys(foundations),
     ...Object.keys(lightShadows),
   ].map((name) => [name, `var(--${name})`])
@@ -33,7 +41,7 @@ export const tokens = Object.fromEntries(
 
 /** Token names grouped for documentation (the /_design gallery). */
 export const tokenGroups = {
-  color: colorTokenNames,
+  color: [...colorTokenNames, ...paletteTokenNames] as ColorTokenName[],
   spacing: Object.keys(spacing) as (keyof typeof spacing)[],
   typography: Object.keys(typography) as (keyof typeof typography)[],
   radius: Object.keys(radius) as (keyof typeof radius)[],

@@ -610,6 +610,7 @@ Web Push, SSE live updates, rich-text docs, task embeds in docs, search, paginat
   | 0017 | OIDC via go-oidc, plus a built-in dev identity provider |
   | 0018 | In-house OpenAPI → TS types and decoders |
   | 0019 | Protocol additions: VALIDATION, `resetData`, `skipAuthRedirect` |
+  | 0020 | Task permission policy |
 - `docs/`:
   - `architecture.md`, with diagrams from §3 and §6
   - `conventions.md`: naming, files, error handling, VM naming `*.vm.ts`

@@ -203,3 +203,24 @@ describe("Bridge", () => {
     off()
   })
 })
+
+describe("useView keepPrevious", () => {
+  it("keeps the last result while new params load", async () => {
+    const { renderHook } = await import("@testing-library/react")
+    const { backend } = inline(systemFetch())
+    const bridge = makeBridge(backend)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <BridgeProvider bridge={bridge}>{children}</BridgeProvider>
+    )
+    const { result, rerender } = renderHook(
+      ({ key }: { key: string }) =>
+        useView("system.info", { key } as never, { keepPrevious: true }),
+      { wrapper, initialProps: { key: "a" } }
+    )
+    await vi.waitFor(() => expect(result.current.status).toBe("success"))
+    rerender({ key: "b" })
+    expect(result.current.status).toBe("success")
+    expect(result.current.isFetching).toBe(true)
+    expect(result.current.data?.service).toBe("list-api")
+  })
+})

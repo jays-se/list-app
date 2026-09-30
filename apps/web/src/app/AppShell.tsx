@@ -17,6 +17,9 @@ export function AppShell() {
           <NavLink to="/" end className={navClass}>
             Home
           </NavLink>
+          <NavLink to="/tasks" className={navClass}>
+            Tasks
+          </NavLink>
           <NavLink to="/settings/workspace" className={navClass}>
             Settings
           </NavLink>

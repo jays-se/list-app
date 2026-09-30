@@ -26,6 +26,11 @@ export {
   type CheckboxProps,
 } from "./components/Checkbox/Checkbox.tsx"
 export {
+  ConfirmDialog,
+  type ConfirmDialogProps,
+} from "./components/Dialog/Dialog.tsx"
+export { Drawer, type DrawerProps } from "./components/Drawer/Drawer.tsx"
+export {
   Field,
   type FieldProps,
   useFieldControl,
@@ -37,6 +42,10 @@ export {
   Textarea,
   type TextareaProps,
 } from "./components/Input/Input.tsx"
+export {
+  LabelChip,
+  type LabelChipProps,
+} from "./components/LabelChip/LabelChip.tsx"
 export { Select, type SelectProps } from "./components/Select/Select.tsx"
 export { Spinner, type SpinnerProps } from "./components/Spinner/Spinner.tsx"
 export { cx } from "./cx.ts"
@@ -47,4 +56,9 @@ export {
   saveTheme,
   type ThemeName,
 } from "./theme/theme.ts"
-export { tokenGroups, tokens } from "./tokens/index.ts"
+export {
+  type PaletteKey,
+  paletteKeys,
+  tokenGroups,
+  tokens,
+} from "./tokens/index.ts"

@@ -1,0 +1,50 @@
+.page {
+  display: grid;
+  gap: var(--spacingL);
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacingM);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.count {
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+}
+
+.error {
+  margin: 0;
+  color: var(--colorStatusDangerForeground1);
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacingXS);
+  padding: var(--spacingXXXL) var(--spacingL);
+  border: var(--strokeWidthThin) dashed var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusXLarge);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: var(--fontSizeBase500);
+  line-height: var(--lineHeightBase500);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+}

@@ -25,9 +25,7 @@ func TestContractMatchesOpenAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	var spec struct {
-		Paths map[string]map[string]struct {
-			DevOnly bool `yaml:"x-dev-only"`
-		} `yaml:"paths"`
+		Paths map[string]map[string]yaml.Node `yaml:"paths"`
 	}
 	if err := yaml.Unmarshal(raw, &spec); err != nil {
 		t.Fatal(err)
@@ -36,9 +34,15 @@ func TestContractMatchesOpenAPI(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			var documented []string
 			for path, ops := range spec.Paths {
-				for method, op := range ops {
+				for method, node := range ops {
 					switch method {
 					case "get", "post", "put", "patch", "delete":
+						var op struct {
+							DevOnly bool `yaml:"x-dev-only"`
+						}
+						if err := node.Decode(&op); err != nil {
+							t.Fatal(err)
+						}
 						if op.DevOnly && provider != config.AuthProviderDev {
 							continue
 						}

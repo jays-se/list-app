@@ -77,7 +77,8 @@ for (const rule of rules) {
       const lines = fs.readFileSync(path.join(root, file), "utf8").split("\n")
       if (!seen.has(file)) {
         seen.add(file)
-        if (lines.length > MAX_LINES) {
+        // Generated files (ADR-0018) are exempt from the authored-code cap.
+        if (lines.length > MAX_LINES && !file.endsWith("generated.ts")) {
           violations.push(`${file}: ${lines.length} lines (max ${MAX_LINES})`)
         }
       }
