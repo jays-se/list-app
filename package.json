@@ -21,7 +21,7 @@
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:agents": "node scripts/sync-agents.mjs --check",
     "sync:agents": "node scripts/sync-agents.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm check:agents && pnpm check:tokens && pnpm check:api && pnpm test",
+    "check": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm check:agents && pnpm check:tokens && pnpm check:api && pnpm test:coverage",
     "prepare": "git config core.hooksPath .githooks || true",
     "gen:api": "node scripts/gen-api.mjs",
     "check:api": "node scripts/gen-api.mjs --check",

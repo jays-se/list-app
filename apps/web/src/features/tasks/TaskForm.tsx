@@ -185,9 +185,9 @@ export function TaskForm({
   )
 }
 
-function PeoplePicker(props: {
+export function PeoplePicker(props: {
   legend: string
-  hint?: string
+  hint?: string | undefined
   people: PersonVM[]
   emptyText: string
   selected: string[]

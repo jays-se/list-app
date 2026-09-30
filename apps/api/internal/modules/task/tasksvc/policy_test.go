@@ -14,15 +14,16 @@ func TestPolicy(t *testing.T) {
 	}{
 		{"view", ActionView}, {"update", ActionUpdate}, {"assignees", ActionSetAssignees},
 		{"labels", ActionSetLabels}, {"owners", ActionSetOwners}, {"delete", ActionDelete},
+		{"request", ActionRequest}, {"review", ActionReview},
 	}
 	want := map[string][]bool{
-		//             view  update assignees labels owners delete
-		"creator":  {true, true, true, true, true, true},
-		"owner":    {true, true, true, true, false, true},
-		"assignee": {true, false, false, false, false, false},
-		"viewer":   {true, false, false, false, false, false},
+		//             view  update assignees labels owners delete request review
+		"creator":  {true, true, true, true, true, true, false, true},
+		"owner":    {true, true, true, true, false, true, false, true},
+		"assignee": {true, false, false, false, false, false, true, false},
+		"viewer":   {true, false, false, false, false, false, false, false},
 		// ADR-0021: a workspace owner manages every task.
-		"admin": {true, true, true, true, true, true},
+		"admin": {true, true, true, true, true, true, false, true},
 	}
 	for user, expected := range want {
 		for i, act := range actions {
@@ -35,7 +36,7 @@ func TestPolicy(t *testing.T) {
 				if got := err == nil; got != expected[i] {
 					t.Fatalf("allowed = %v, want %v", got, expected[i])
 				}
-				if err != nil && !errors.Is(err, ErrForbidden) {
+				if err != nil && !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrManagerRequest) {
 					t.Fatalf("want ErrForbidden, got %v", err)
 				}
 			})
@@ -43,8 +44,11 @@ func TestPolicy(t *testing.T) {
 	}
 
 	v := Evaluate(a, "owner")
-	if !v.CanManage || v.CanManageOwners || !v.IsAssignee {
+	if !v.CanManage || v.CanManageOwners || !v.IsAssignee || v.CanRequest {
 		t.Fatalf("owner viewer flags: %+v", v)
+	}
+	if v := Evaluate(a, "assignee"); v.CanManage || !v.CanRequest {
+		t.Fatalf("assignee viewer flags: %+v", v)
 	}
 }
 

@@ -43,6 +43,20 @@
   font-weight: var(--fontWeightSemibold);
 }
 
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: var(--spacingXS);
+  padding: 0 var(--spacingXS);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorBrandBackground);
+  color: var(--colorNeutralForegroundOnBrand);
+  font-size: var(--fontSizeBase100);
+  font-weight: var(--fontWeightSemibold);
+  line-height: 18px;
+  text-align: center;
+}
+
 .user {
   display: flex;
   align-items: center;

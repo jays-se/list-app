@@ -141,3 +141,30 @@
 .mentionPicker {
   width: 200px;
 }
+
+.request {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacingS);
+  padding: var(--spacingS) 0;
+}
+
+.requestBody {
+  display: grid;
+  gap: var(--spacingXS);
+  min-width: 0;
+}
+
+.requestNote {
+  margin: 0;
+  padding-left: var(--spacingS);
+  border-left: var(--strokeWidthThick) solid var(--colorNeutralStroke2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pending {
+  margin: 0;
+  color: var(--colorStatusWarningForeground1);
+  font-size: var(--fontSizeBase200);
+}

@@ -50,6 +50,7 @@ type Task struct {
 	Checklist   []ChecklistItem
 	Comments    []Comment
 	Attachments []Attachment
+	Requests    []ChangeRequest
 }
 
 func (t Task) ToJSON() ([]byte, error) { return json.Marshal(t) }
@@ -59,6 +60,8 @@ type Viewer struct {
 	CanManage       bool `json:"canManage"`
 	CanManageOwners bool `json:"canManageOwners"`
 	IsAssignee      bool `json:"isAssignee"`
+	// CanRequest: an assignee who can't manage proposes changes instead (E5-S2).
+	CanRequest bool `json:"canRequest"`
 }
 
 func (v Viewer) ToJSON() ([]byte, error) { return json.Marshal(v) }

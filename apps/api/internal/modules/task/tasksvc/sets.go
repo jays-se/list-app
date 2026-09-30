@@ -8,6 +8,7 @@ import (
 
 	"github.com/intellicars/list-app/apps/api/internal/apperr"
 	mdl "github.com/intellicars/list-app/apps/api/internal/modules/task/taskmdl"
+	"github.com/intellicars/list-app/apps/api/internal/outbox"
 	"github.com/intellicars/list-app/apps/api/internal/uuidx"
 )
 
@@ -25,71 +26,96 @@ type named struct{ id, name string }
 // ReplaceSet replaces a task's assignees, owners or labels, recording one
 // ADDED/REMOVED event per difference.
 func (s *TaskSvc) ReplaceSet(ctx context.Context, tn Caller, id string, kind Set, ids []string) (mdl.Task, mdl.Viewer, error) {
-	ids = dedupe(ids)
 	var task mdl.Task
 	err := dbTenant(ctx, s, tn, func(tx pgx.Tx) error {
 		cur, err := load(ctx, tx, tn.WorkspaceID, id, true)
 		if err != nil {
 			return err
 		}
-		var (
-			table, column, added, removed string
-			before                        []named
-			action                        Action
-		)
-		switch kind {
-		case SetAssignees:
-			table, column, added, removed, action = "task_assignees", "user_id", EvAssigneeAdded, EvAssigneeRemoved, ActionSetAssignees
-			before = people(cur.Assignees)
-		case SetOwners:
-			table, column, added, removed, action = "task_owners", "user_id", EvOwnerAdded, EvOwnerRemoved, ActionSetOwners
-			before = people(cur.Owners)
-			// The creator already manages the task and is never listed as an owner.
-			ids = slices.DeleteFunc(ids, func(uid string) bool { return uid == cur.CreatedBy.ID })
-		case SetLabels:
-			table, column, added, removed, action = "task_labels", "label_id", EvLabelAdded, EvLabelRemoved, ActionSetLabels
-			for _, l := range cur.Labels {
-				before = append(before, named{l.ID, l.Name})
-			}
-		}
+		action := map[Set]Action{SetAssignees: ActionSetAssignees, SetOwners: ActionSetOwners, SetLabels: ActionSetLabels}[kind]
 		if err := Authorize(accessOf(cur, tn), tn.UserID, action); err != nil {
 			return err
 		}
-		if kind == SetLabels {
-			err = checkLabels(ctx, tx, tn.WorkspaceID, ids)
-		} else {
-			err = checkMembers(ctx, tx, tn.WorkspaceID, ids, "userIds")
-		}
-		if err != nil {
-			return err
-		}
-		if err := replaceSet(ctx, tx, table, column, tn.WorkspaceID, id, ids); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE tasks SET version = version + 1, updated_at = now() WHERE id = $1`, id); err != nil {
+		if err := replaceSetTx(ctx, tx, tn, cur, kind, ids); err != nil {
 			return err
 		}
 		task, err = loadDetail(ctx, tx, tn.WorkspaceID, id)
-		if err != nil {
-			return err
-		}
-		var after []named
-		switch kind {
-		case SetAssignees:
-			after = people(task.Assignees)
-		case SetOwners:
-			after = people(task.Owners)
-		case SetLabels:
-			for _, l := range task.Labels {
-				after = append(after, named{l.ID, l.Name})
-			}
-		}
-		return emit(ctx, tx, tn, id, diffEvents(before, after, added, removed)...)
+		return err
 	})
 	if err != nil {
 		return mdl.Task{}, mdl.Viewer{}, wrap("replace_set", err)
 	}
 	return task, Evaluate(accessOf(task, tn), tn.UserID), nil
+}
+
+// replaceSetTx rewrites one set of cur (locked and authorized by the
+// caller); approving ASSIGNEE_ADD/REMOVE requests reuses it (ADR-0023).
+func replaceSetTx(ctx context.Context, tx pgx.Tx, tn Caller, cur mdl.Task, kind Set, ids []string) error {
+	ids = dedupe(ids)
+	var (
+		table, column, added, removed string
+		before                        []named
+	)
+	switch kind {
+	case SetAssignees:
+		table, column, added, removed = "task_assignees", "user_id", EvAssigneeAdded, EvAssigneeRemoved
+		before = people(cur.Assignees)
+	case SetOwners:
+		table, column, added, removed = "task_owners", "user_id", EvOwnerAdded, EvOwnerRemoved
+		before = people(cur.Owners)
+		// The creator already manages the task and is never listed as an owner.
+		ids = slices.DeleteFunc(ids, func(uid string) bool { return uid == cur.CreatedBy.ID })
+	case SetLabels:
+		table, column, added, removed = "task_labels", "label_id", EvLabelAdded, EvLabelRemoved
+		for _, l := range cur.Labels {
+			before = append(before, named{l.ID, l.Name})
+		}
+	}
+	var err error
+	if kind == SetLabels {
+		err = checkLabels(ctx, tx, tn.WorkspaceID, ids)
+	} else {
+		err = checkMembers(ctx, tx, tn.WorkspaceID, ids, "userIds")
+	}
+	if err != nil {
+		return err
+	}
+	if err := replaceSet(ctx, tx, table, column, tn.WorkspaceID, cur.ID, ids); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE tasks SET version = version + 1, updated_at = now() WHERE id = $1`, cur.ID); err != nil {
+		return err
+	}
+	task, err := load(ctx, tx, tn.WorkspaceID, cur.ID, false)
+	if err != nil {
+		return err
+	}
+	var after []named
+	switch kind {
+	case SetAssignees:
+		after = people(task.Assignees)
+	case SetOwners:
+		after = people(task.Owners)
+	case SetLabels:
+		for _, l := range task.Labels {
+			after = append(after, named{l.ID, l.Name})
+		}
+	}
+	if kind == SetAssignees {
+		var newIDs []string
+		for _, n := range after {
+			if !slices.ContainsFunc(before, func(b named) bool { return b.id == n.id }) {
+				newIDs = append(newIDs, n.id)
+			}
+		}
+		if len(newIDs) > 0 {
+			if err := outbox.Emit(ctx, tx, tn.WorkspaceID, outbox.KindTaskAssigned,
+				outbox.TaskAssigned{TaskID: cur.ID, ActorID: tn.UserID, UserIDs: newIDs}); err != nil {
+				return err
+			}
+		}
+	}
+	return emit(ctx, tx, tn, cur.ID, diffEvents(before, after, added, removed)...)
 }
 
 func people(ps []mdl.Person) []named {

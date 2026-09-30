@@ -37,6 +37,7 @@ func ToTaskRsp(t Task, v Viewer) TaskRsp {
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt, Version: t.Version, Viewer: v,
 		Client: t.Client, Parent: t.Parent,
 		Subtasks: nonNil(t.Subtasks), Checklist: nonNil(t.Checklist), Comments: nonNil(t.Comments), Attachments: nonNil(t.Attachments),
+		Requests: nonNil(t.Requests),
 	}
 }
 

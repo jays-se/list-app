@@ -1,5 +1,6 @@
 import type { TaskListParams } from "@app/protocol"
 import { defineView } from "../runtime.ts"
+import { sessionQuery } from "../session/session.queries.ts"
 import { todayISO } from "../shared/dates.ts"
 import { membersQuery } from "../workspace/members.queries.ts"
 import {
@@ -37,8 +38,9 @@ export const taskViews = {
       members: membersQuery(ctx.api),
       labels: labelsQuery(ctx.api),
       clients: clientsQuery(ctx.api),
+      session: sessionQuery(ctx.api),
     }),
-    compute: ({ task, members, labels, clients }, _params, ctx) =>
+    compute: ({ task, members, labels, clients, session }, _params, ctx) =>
       toTaskDetailVM(
         task,
         members,
@@ -46,7 +48,8 @@ export const taskViews = {
         clients,
         todayISO(ctx.now()),
         ctx.now(),
-        ctx.locale
+        ctx.locale,
+        session.user?.id ?? ""
       ),
   }),
 

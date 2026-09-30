@@ -32,7 +32,8 @@ SELECT t.id, t.title, t.description, t.status, t.priority, t.start_date, t.end_d
          'checklist', (SELECT count(*) FROM checklist_items c WHERE c.task_id = t.id),
          'checklistDone', (SELECT count(*) FROM checklist_items c WHERE c.task_id = t.id AND c.done),
          'comments', (SELECT count(*) FROM comments m WHERE m.task_id = t.id),
-         'attachments', (SELECT count(*) FROM attachments f WHERE f.task_id = t.id AND f.status = 'READY'))
+         'attachments', (SELECT count(*) FROM attachments f WHERE f.task_id = t.id AND f.status = 'READY'),
+         'pendingRequests', (SELECT count(*) FROM change_requests r WHERE r.task_id = t.id AND r.status = 'PENDING'))
   FROM tasks t
   JOIN users cu ON cu.id = t.created_by
   LEFT JOIN clients cl ON cl.id = t.client_id
@@ -111,6 +112,9 @@ func loadDetail(ctx context.Context, tx pgx.Tx, workspaceID, id string) (mdl.Tas
 		              FROM attachments f LEFT JOIN users u ON u.id = f.uploaded_by WHERE f.task_id = $1 AND f.status = 'READY'), '[]')`,
 		id).Scan(&t.Subtasks, &t.Checklist, &t.Comments, &t.Attachments); err != nil {
 		return t, fmt.Errorf("tasksvc: load detail: %w", err)
+	}
+	if t.Requests, err = loadRequests(ctx, tx, id); err != nil {
+		return t, fmt.Errorf("tasksvc: load requests: %w", err)
 	}
 	return t, nil
 }

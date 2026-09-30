@@ -11,6 +11,7 @@ import (
 	"github.com/intellicars/list-app/apps/api/internal/apperr"
 	"github.com/intellicars/list-app/apps/api/internal/db"
 	mdl "github.com/intellicars/list-app/apps/api/internal/modules/task/taskmdl"
+	"github.com/intellicars/list-app/apps/api/internal/outbox"
 	"github.com/intellicars/list-app/apps/api/internal/uuidx"
 )
 
@@ -85,12 +86,8 @@ func memberName(ctx context.Context, tx pgx.Tx, workspaceID, userID string) (str
 
 // AddChecklistItem appends an item (manage permission).
 func (s *TaskSvc) AddChecklistItem(ctx context.Context, tn Caller, taskID string, req mdl.CreateChecklistItemReq) (mdl.ChecklistItem, error) {
-	title, err := validItemTitle(req.Title)
-	if err != nil {
-		return mdl.ChecklistItem{}, err
-	}
 	var item mdl.ChecklistItem
-	err = dbTenant(ctx, s, tn, func(tx pgx.Tx) error {
+	err := dbTenant(ctx, s, tn, func(tx pgx.Tx) error {
 		task, err := load(ctx, tx, tn.WorkspaceID, taskID, true)
 		if err != nil {
 			return err
@@ -98,30 +95,39 @@ func (s *TaskSvc) AddChecklistItem(ctx context.Context, tn Caller, taskID string
 		if err := Authorize(accessOf(task, tn), tn.UserID, ActionUpdate); err != nil {
 			return err
 		}
-		var assignee *string
-		events := []event{{Kind: EvChecklistAdded, Subject: title}}
-		if req.AssigneeID != nil && *req.AssigneeID != "" {
-			name, err := memberName(ctx, tx, tn.WorkspaceID, *req.AssigneeID)
-			if err != nil {
-				return err
-			}
-			assignee = req.AssigneeID
-			events = append(events, event{Kind: EvChecklistAssigned, Subject: title, To: name})
-		}
-		var id string
-		if err := tx.QueryRow(ctx, `
-			INSERT INTO checklist_items (workspace_id, task_id, title, assignee_id, position)
-			VALUES ($1, $2, $3, $4, coalesce((SELECT max(position) + 1 FROM checklist_items WHERE task_id = $2), 0))
-			RETURNING id`, tn.WorkspaceID, taskID, title, assignee).Scan(&id); err != nil {
-			return err
-		}
-		if err := emit(ctx, tx, tn, taskID, events...); err != nil {
+		id, err := addChecklistItemTx(ctx, tx, tn, taskID, req)
+		if err != nil {
 			return err
 		}
 		item, err = loadItem(ctx, tx, id)
 		return err
 	})
 	return item, wrap("checklist_add", err)
+}
+
+func addChecklistItemTx(ctx context.Context, tx pgx.Tx, tn Caller, taskID string, req mdl.CreateChecklistItemReq) (string, error) {
+	title, err := validItemTitle(req.Title)
+	if err != nil {
+		return "", err
+	}
+	var assignee *string
+	events := []event{{Kind: EvChecklistAdded, Subject: title}}
+	if req.AssigneeID != nil && *req.AssigneeID != "" {
+		name, err := memberName(ctx, tx, tn.WorkspaceID, *req.AssigneeID)
+		if err != nil {
+			return "", err
+		}
+		assignee = req.AssigneeID
+		events = append(events, event{Kind: EvChecklistAssigned, Subject: title, To: name})
+	}
+	var id string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO checklist_items (workspace_id, task_id, title, assignee_id, position)
+		VALUES ($1, $2, $3, $4, coalesce((SELECT max(position) + 1 FROM checklist_items WHERE task_id = $2), 0))
+		RETURNING id`, tn.WorkspaceID, taskID, title, assignee).Scan(&id); err != nil {
+		return "", err
+	}
+	return id, emit(ctx, tx, tn, taskID, events...)
 }
 
 // UpdateChecklistItem checks/unchecks, renames or (un)assigns an item.
@@ -135,60 +141,64 @@ func (s *TaskSvc) UpdateChecklistItem(ctx context.Context, tn Caller, itemID str
 		if err := Authorize(accessOf(task, tn), tn.UserID, ActionUpdate); err != nil {
 			return err
 		}
-		cur, err := loadItem(ctx, tx, itemID)
-		if err != nil {
-			return err
-		}
-		next := cur
-		var events []event
-		if req.Title.Set {
-			if next.Title, err = validItemTitle(req.Title.Value); err != nil {
-				return err
-			}
-			if next.Title != cur.Title {
-				events = append(events, event{Kind: EvChecklistRenamed, From: cur.Title, To: next.Title})
-			}
-		}
-		if req.Done.Set && req.Done.Value != cur.Done {
-			next.Done = req.Done.Value
-			kind := EvChecklistUnchk
-			if next.Done {
-				kind = EvChecklistChecked
-			}
-			events = append(events, event{Kind: kind, Subject: next.Title})
-		}
-		assigneeID := (*string)(nil)
-		if cur.Assignee != nil {
-			assigneeID = &cur.Assignee.ID
-		}
-		if req.AssigneeID.Set {
-			newID := req.AssigneeID.Value
-			switch {
-			case newID == nil || *newID == "":
-				if cur.Assignee != nil {
-					events = append(events, event{Kind: EvChecklistUnassign, Subject: next.Title, From: cur.Assignee.Name})
-				}
-				assigneeID = nil
-			case cur.Assignee == nil || cur.Assignee.ID != *newID:
-				name, err := memberName(ctx, tx, tn.WorkspaceID, *newID)
-				if err != nil {
-					return err
-				}
-				events = append(events, event{Kind: EvChecklistAssigned, Subject: next.Title, To: name})
-				assigneeID = newID
-			}
-		}
-		if _, err := tx.Exec(ctx, `UPDATE checklist_items SET title = $2, done = $3, assignee_id = $4 WHERE id = $1`,
-			itemID, next.Title, next.Done, assigneeID); err != nil {
-			return err
-		}
-		if err := emit(ctx, tx, tn, task.ID, events...); err != nil {
+		if err := updateChecklistItemTx(ctx, tx, tn, task.ID, itemID, req); err != nil {
 			return err
 		}
 		item, err = loadItem(ctx, tx, itemID)
 		return err
 	})
 	return item, wrap("checklist_update", err)
+}
+
+func updateChecklistItemTx(ctx context.Context, tx pgx.Tx, tn Caller, taskID, itemID string, req mdl.UpdateChecklistItemReq) error {
+	cur, err := loadItem(ctx, tx, itemID)
+	if err != nil {
+		return err
+	}
+	next := cur
+	var events []event
+	if req.Title.Set {
+		if next.Title, err = validItemTitle(req.Title.Value); err != nil {
+			return err
+		}
+		if next.Title != cur.Title {
+			events = append(events, event{Kind: EvChecklistRenamed, From: cur.Title, To: next.Title})
+		}
+	}
+	if req.Done.Set && req.Done.Value != cur.Done {
+		next.Done = req.Done.Value
+		kind := EvChecklistUnchk
+		if next.Done {
+			kind = EvChecklistChecked
+		}
+		events = append(events, event{Kind: kind, Subject: next.Title})
+	}
+	assigneeID := (*string)(nil)
+	if cur.Assignee != nil {
+		assigneeID = &cur.Assignee.ID
+	}
+	if req.AssigneeID.Set {
+		newID := req.AssigneeID.Value
+		switch {
+		case newID == nil || *newID == "":
+			if cur.Assignee != nil {
+				events = append(events, event{Kind: EvChecklistUnassign, Subject: next.Title, From: cur.Assignee.Name})
+			}
+			assigneeID = nil
+		case cur.Assignee == nil || cur.Assignee.ID != *newID:
+			name, err := memberName(ctx, tx, tn.WorkspaceID, *newID)
+			if err != nil {
+				return err
+			}
+			events = append(events, event{Kind: EvChecklistAssigned, Subject: next.Title, To: name})
+			assigneeID = newID
+		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE checklist_items SET title = $2, done = $3, assignee_id = $4 WHERE id = $1`,
+		itemID, next.Title, next.Done, assigneeID); err != nil {
+		return err
+	}
+	return emit(ctx, tx, tn, taskID, events...)
 }
 
 func (s *TaskSvc) DeleteChecklistItem(ctx context.Context, tn Caller, itemID string) error {
@@ -200,13 +210,17 @@ func (s *TaskSvc) DeleteChecklistItem(ctx context.Context, tn Caller, itemID str
 		if err := Authorize(accessOf(task, tn), tn.UserID, ActionUpdate); err != nil {
 			return err
 		}
-		var title string
-		if err := tx.QueryRow(ctx, `DELETE FROM checklist_items WHERE id = $1 RETURNING title`, itemID).Scan(&title); err != nil {
-			return err
-		}
-		return emit(ctx, tx, tn, task.ID, event{Kind: EvChecklistRemoved, Subject: title})
+		return deleteChecklistItemTx(ctx, tx, tn, task.ID, itemID)
 	})
 	return wrap("checklist_delete", err)
+}
+
+func deleteChecklistItemTx(ctx context.Context, tx pgx.Tx, tn Caller, taskID, itemID string) error {
+	var title string
+	if err := tx.QueryRow(ctx, `DELETE FROM checklist_items WHERE id = $1 RETURNING title`, itemID).Scan(&title); err != nil {
+		return err
+	}
+	return emit(ctx, tx, tn, taskID, event{Kind: EvChecklistRemoved, Subject: title})
 }
 
 // AddComment posts a comment (any member may comment). Mentions must be
@@ -241,6 +255,12 @@ func (s *TaskSvc) AddComment(ctx context.Context, tn Caller, taskID string, req 
 		}
 		if err := emit(ctx, tx, tn, taskID, event{Kind: EvCommented, Subject: truncate(body, 120)}); err != nil {
 			return err
+		}
+		if len(mentions) > 0 {
+			if err := outbox.Emit(ctx, tx, tn.WorkspaceID, outbox.KindCommentMentioned,
+				outbox.CommentMentioned{TaskID: taskID, ActorID: tn.UserID, CommentID: id, UserIDs: mentions}); err != nil {
+				return err
+			}
 		}
 		task, err := loadDetail(ctx, tx, tn.WorkspaceID, taskID)
 		if err != nil {

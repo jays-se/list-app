@@ -48,6 +48,7 @@ type TaskRsp struct {
 	Checklist   []ChecklistItem `json:"checklist"`
 	Comments    []Comment       `json:"comments"`
 	Attachments []Attachment    `json:"attachments"`
+	Requests    []ChangeRequest `json:"requests"`
 }
 
 // ListTasksRsp is api/openapi.yaml#TaskList.

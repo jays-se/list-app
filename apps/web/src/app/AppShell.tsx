@@ -23,6 +23,7 @@ export function AppShell() {
           <NavLink to="/clients" className={navClass}>
             Clients
           </NavLink>
+          <InboxLink />
           <NavLink to="/settings/workspace" className={navClass}>
             Settings
           </NavLink>
@@ -45,6 +46,25 @@ export function AppShell() {
 
 function navClass({ isActive }: { isActive: boolean }) {
   return cx(styles.navLink, isActive && styles.active)
+}
+
+/** Polls with the inbox (20 s); the count comes from the worker. */
+function InboxLink() {
+  const badge = useView("inbox.badge", {}).data
+  return (
+    <NavLink
+      to="/inbox"
+      className={navClass}
+      aria-label={badge?.label ?? "Inbox"}
+    >
+      Inbox
+      {badge?.badgeText && (
+        <span className={styles.badge} aria-hidden="true">
+          {badge.badgeText}
+        </span>
+      )}
+    </NavLink>
+  )
 }
 
 function UserMenu() {

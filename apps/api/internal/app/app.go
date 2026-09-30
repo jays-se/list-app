@@ -3,6 +3,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -20,12 +21,15 @@ import (
 	"github.com/intellicars/list-app/apps/api/internal/modules/client/clientsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelsvc"
+	"github.com/intellicars/list-app/apps/api/internal/modules/notification/notificationhdlr"
+	"github.com/intellicars/list-app/apps/api/internal/modules/notification/notificationsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/task/taskhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/task/tasksvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacehdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacesvc"
+	"github.com/intellicars/list-app/apps/api/internal/outbox"
 )
 
 const ServiceName = "list-api"
@@ -53,8 +57,33 @@ func Blobs(cfg config.Config, now func() time.Time) (blobstore.Store, error) {
 	return blobstore.NewLocal(cfg.BlobDir, cfg.SessionSecret, now)
 }
 
+// App is the wired API: the HTTP handler plus the background workers
+// (outbox dispatcher, DUE scheduler) that main starts and tests drive.
+type App struct {
+	Handler       http.Handler
+	Router        *apiserver.Router
+	Outbox        *outbox.Dispatcher
+	Notifications *notificationsvc.NotificationSvc
+	now           func() time.Time
+}
+
+// RunBackground runs the workers until ctx is done (needs a pool).
+func (a *App) RunBackground(ctx context.Context) {
+	go a.Outbox.Run(ctx)
+	go a.Notifications.RunDueScheduler(ctx, a.now)
+}
+
 // New builds the root handler and returns the router for contract checks.
 func New(cfg config.Config, o Options) (http.Handler, *apiserver.Router, error) {
+	a, err := Build(cfg, o)
+	if err != nil {
+		return nil, nil, err
+	}
+	return a.Handler, a.Router, nil
+}
+
+// Build wires everything.
+func Build(cfg config.Config, o Options) (*App, error) {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
@@ -83,18 +112,23 @@ func New(cfg config.Config, o Options) (http.Handler, *apiserver.Router, error) 
 	if blobs == nil {
 		var err error
 		if blobs, err = Blobs(cfg, o.Now); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	tasks := taskhdlr.NewTaskHdlr(tasksvc.NewTaskSvc(o.Pool, blobs, o.Log), workspaces, o.Log)
 	labels := labelhdlr.NewLabelHdlr(labelsvc.NewLabelSvc(o.Pool, o.Log), workspaces, o.Log)
 	clients := clienthdlr.NewClientHdlr(clientsvc.NewClientSvc(o.Pool, o.Log), workspaces, o.Log)
 
-	registrars := []apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels, clients}
+	notifySvc := notificationsvc.NewNotificationSvc(o.Pool, o.Log)
+	notifications := notificationhdlr.NewNotificationHdlr(notifySvc, workspaces, o.Log)
+	dispatcher := outbox.NewDispatcher(o.Pool, o.Log)
+	notifySvc.Register(dispatcher)
+
+	registrars := []apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels, clients, notifications}
 	if local, ok := blobs.(*blobstore.Local); ok {
 		registrars = append(registrars, local) // signed /api/v1/blobs/{token} routes
 	}
 	csrfExempt := func(r *http.Request) bool { return authhdlr.IsDevAuthorize(r) || blobstore.IsBlobRoute(r) }
 	h, router := apiserver.NewHandler(o.Log, registrars, apiserver.CSRF(cfg.PublicOrigin(), csrfExempt))
-	return h, router, nil
+	return &App{Handler: h, Router: router, Outbox: dispatcher, Notifications: notifySvc, now: o.Now}, nil
 }

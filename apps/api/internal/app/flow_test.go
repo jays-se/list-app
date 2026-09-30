@@ -28,6 +28,14 @@ type client struct {
 
 func newServer(t *testing.T) string {
 	t.Helper()
+	base, _ := newServerApp(t)
+	return base
+}
+
+// newServerApp also returns the App so tests can drive background work
+// (outbox dispatch, DUE reminders) deterministically.
+func newServerApp(t *testing.T) (string, *app.App) {
+	t.Helper()
 	pool := testdb.Pool(t)
 	srv := httptest.NewUnstartedServer(nil)
 	cfg, err := config.Load(func(k string) string {
@@ -40,14 +48,14 @@ func newServer(t *testing.T) string {
 	if os.Getenv("TEST_LOG") != "" { // TEST_LOG=1 shows server logs
 		out = os.Stderr
 	}
-	h, _, err := app.New(cfg, app.Options{Pool: pool, Log: slog.New(slog.NewTextHandler(out, nil)), StartedAt: time.Now()})
+	a, err := app.Build(cfg, app.Options{Pool: pool, Log: slog.New(slog.NewTextHandler(out, nil)), StartedAt: time.Now()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.Config.Handler = h
+	srv.Config.Handler = a.Handler
 	srv.Start()
 	t.Cleanup(srv.Close)
-	return srv.URL
+	return srv.URL, a
 }
 
 func newClient(t *testing.T, base string) *client {

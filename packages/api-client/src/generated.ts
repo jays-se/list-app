@@ -127,6 +127,117 @@ export function decodeAttachmentUploadResponse(
   }))
 }
 
+export interface ChangeRequest {
+  id: string
+  kind: ChangeRequestKind
+  status: ChangeRequestStatus
+  payload: ChangeRequestPayload
+  summary: string
+  note: string | null
+  reviewNote: string | null
+  requester: PersonRef | null
+  reviewer: PersonRef | null
+  createdAt: string
+  decidedAt: string | null
+}
+export function decodeChangeRequest(v: unknown, p = "$"): ChangeRequest {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    kind: decodeChangeRequestKind(o.kind, `${p}.kind`),
+    status: decodeChangeRequestStatus(o.status, `${p}.status`),
+    payload: decodeChangeRequestPayload(o.payload, `${p}.payload`),
+    summary: decString(o.summary, `${p}.summary`),
+    note: o.note === null ? null : decString(o.note, `${p}.note`),
+    reviewNote:
+      o.reviewNote === null ? null : decString(o.reviewNote, `${p}.reviewNote`),
+    requester:
+      o.requester === null
+        ? null
+        : decodePersonRef(o.requester, `${p}.requester`),
+    reviewer:
+      o.reviewer === null ? null : decodePersonRef(o.reviewer, `${p}.reviewer`),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+    decidedAt:
+      o.decidedAt === null ? null : decString(o.decidedAt, `${p}.decidedAt`),
+  }))
+}
+
+export type ChangeRequestKind =
+  | "UPDATE"
+  | "ASSIGNEE_ADD"
+  | "ASSIGNEE_REMOVE"
+  | "SUBTASK_ADD"
+  | "CHECKLIST_ADD"
+  | "CHECKLIST_UPDATE"
+  | "CHECKLIST_REMOVE"
+  | "ATTACHMENT_REMOVE"
+export function decodeChangeRequestKind(
+  v: unknown,
+  p = "$"
+): ChangeRequestKind {
+  return decEnum(v, p, [
+    "UPDATE",
+    "ASSIGNEE_ADD",
+    "ASSIGNEE_REMOVE",
+    "SUBTASK_ADD",
+    "CHECKLIST_ADD",
+    "CHECKLIST_UPDATE",
+    "CHECKLIST_REMOVE",
+    "ATTACHMENT_REMOVE",
+  ] as const)
+}
+
+/** Flat payload; members by kind — UPDATE: field (status|startDate|endDate|dueDate), value ("" clears dueDate), from (server-set); ASSIGNEE_*: userId; SUBTASK_ADD / CHECKLIST_ADD: title; CHECKLIST_UPDATE: itemId + title and/or done; CHECKLIST_REMOVE: itemId; ATTACHMENT_REMOVE: attachmentId. */
+export interface ChangeRequestPayload {
+  field?: string
+  value?: string
+  from?: string
+  userId?: string
+  title?: string
+  itemId?: string
+  done?: boolean
+  attachmentId?: string
+}
+export function decodeChangeRequestPayload(
+  v: unknown,
+  p = "$"
+): ChangeRequestPayload {
+  return decObject(v, p, (o) => ({
+    ...(o.field === undefined
+      ? {}
+      : { field: decString(o.field, `${p}.field`) }),
+    ...(o.value === undefined
+      ? {}
+      : { value: decString(o.value, `${p}.value`) }),
+    ...(o.from === undefined ? {} : { from: decString(o.from, `${p}.from`) }),
+    ...(o.userId === undefined
+      ? {}
+      : { userId: decString(o.userId, `${p}.userId`) }),
+    ...(o.title === undefined
+      ? {}
+      : { title: decString(o.title, `${p}.title`) }),
+    ...(o.itemId === undefined
+      ? {}
+      : { itemId: decString(o.itemId, `${p}.itemId`) }),
+    ...(o.done === undefined ? {} : { done: decBoolean(o.done, `${p}.done`) }),
+    ...(o.attachmentId === undefined
+      ? {}
+      : { attachmentId: decString(o.attachmentId, `${p}.attachmentId`) }),
+  }))
+}
+
+export type ChangeRequestStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELED"
+export function decodeChangeRequestStatus(
+  v: unknown,
+  p = "$"
+): ChangeRequestStatus {
+  return decEnum(v, p, ["PENDING", "APPROVED", "REJECTED", "CANCELED"] as const)
+}
+
 export interface ChecklistItem {
   id: string
   title: string
@@ -273,6 +384,24 @@ export function decodeCreateAttachmentRequest(
     filename: decString(o.filename, `${p}.filename`),
     mimeType: decString(o.mimeType, `${p}.mimeType`),
     size: decNumber(o.size, `${p}.size`, true),
+  }))
+}
+
+export interface CreateChangeRequest {
+  kind: ChangeRequestKind
+  payload: ChangeRequestPayload
+  note?: string | null
+}
+export function decodeCreateChangeRequest(
+  v: unknown,
+  p = "$"
+): CreateChangeRequest {
+  return decObject(v, p, (o) => ({
+    kind: decodeChangeRequestKind(o.kind, `${p}.kind`),
+    payload: decodeChangeRequestPayload(o.payload, `${p}.payload`),
+    ...(o.note === undefined
+      ? {}
+      : { note: o.note === null ? null : decString(o.note, `${p}.note`) }),
   }))
 }
 
@@ -558,6 +687,105 @@ export function decodeMeResponse(v: unknown, p = "$"): MeResponse {
   return decObject(v, p, (o) => ({ user: decodeUser(o.user, `${p}.user`) }))
 }
 
+export interface Notification {
+  id: string
+  kind: NotificationKind
+  task: NotificationTask | null
+  taskTitle: string | null
+  actor: PersonRef | null
+  detail: string
+  commentBody: string | null
+  createdAt: string
+  readAt: string | null
+}
+export function decodeNotification(v: unknown, p = "$"): Notification {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    kind: decodeNotificationKind(o.kind, `${p}.kind`),
+    task: o.task === null ? null : decodeNotificationTask(o.task, `${p}.task`),
+    taskTitle:
+      o.taskTitle === null ? null : decString(o.taskTitle, `${p}.taskTitle`),
+    actor: o.actor === null ? null : decodePersonRef(o.actor, `${p}.actor`),
+    detail: decString(o.detail, `${p}.detail`),
+    commentBody:
+      o.commentBody === null
+        ? null
+        : decString(o.commentBody, `${p}.commentBody`),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+    readAt: o.readAt === null ? null : decString(o.readAt, `${p}.readAt`),
+  }))
+}
+
+export type NotificationKind =
+  | "MENTION"
+  | "ASSIGNED"
+  | "STATUS"
+  | "DUE"
+  | "REQUEST"
+  | "REVIEWED"
+export function decodeNotificationKind(v: unknown, p = "$"): NotificationKind {
+  return decEnum(v, p, [
+    "MENTION",
+    "ASSIGNED",
+    "STATUS",
+    "DUE",
+    "REQUEST",
+    "REVIEWED",
+  ] as const)
+}
+
+export interface NotificationList {
+  notifications: Notification[]
+  unread: number
+}
+export function decodeNotificationList(v: unknown, p = "$"): NotificationList {
+  return decObject(v, p, (o) => ({
+    notifications: decArray(o.notifications, `${p}.notifications`, (x, xp) =>
+      decodeNotification(x, xp)
+    ),
+    unread: decNumber(o.unread, `${p}.unread`, true),
+  }))
+}
+
+export interface NotificationSetting {
+  kind: NotificationKind
+  enabled: boolean
+}
+export function decodeNotificationSetting(
+  v: unknown,
+  p = "$"
+): NotificationSetting {
+  return decObject(v, p, (o) => ({
+    kind: decodeNotificationKind(o.kind, `${p}.kind`),
+    enabled: decBoolean(o.enabled, `${p}.enabled`),
+  }))
+}
+
+export interface NotificationSettings {
+  settings: NotificationSetting[]
+}
+export function decodeNotificationSettings(
+  v: unknown,
+  p = "$"
+): NotificationSettings {
+  return decObject(v, p, (o) => ({
+    settings: decArray(o.settings, `${p}.settings`, (x, xp) =>
+      decodeNotificationSetting(x, xp)
+    ),
+  }))
+}
+
+export interface NotificationTask {
+  id: string
+  title: string
+}
+export function decodeNotificationTask(v: unknown, p = "$"): NotificationTask {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+  }))
+}
+
 export interface PersonRef {
   id: string
   name: string
@@ -613,6 +841,20 @@ export function decodeReadiness(v: unknown, p = "$"): Readiness {
   return decObject(v, p, (o) => ({
     status: decEnum(o.status, `${p}.status`, ["ready", "not_ready"] as const),
     checks: decRecord(o.checks, `${p}.checks`, (x, xp) => decString(x, xp)),
+  }))
+}
+
+export interface ReviewChangeRequest {
+  note?: string | null
+}
+export function decodeReviewChangeRequest(
+  v: unknown,
+  p = "$"
+): ReviewChangeRequest {
+  return decObject(v, p, (o) => ({
+    ...(o.note === undefined
+      ? {}
+      : { note: o.note === null ? null : decString(o.note, `${p}.note`) }),
   }))
 }
 
@@ -682,6 +924,7 @@ export interface Task {
   checklist: ChecklistItem[]
   comments: Comment[]
   attachments: Attachment[]
+  requests: ChangeRequest[]
 }
 export function decodeTask(v: unknown, p = "$"): Task {
   return decObject(v, p, (o) => ({
@@ -722,10 +965,14 @@ export function decodeTask(v: unknown, p = "$"): Task {
     attachments: decArray(o.attachments, `${p}.attachments`, (x, xp) =>
       decodeAttachment(x, xp)
     ),
+    requests: decArray(o.requests, `${p}.requests`, (x, xp) =>
+      decodeChangeRequest(x, xp)
+    ),
   }))
 }
 
 export interface TaskCounts {
+  pendingRequests: number
   subtasks: number
   subtasksDone: number
   checklist: number
@@ -735,6 +982,7 @@ export interface TaskCounts {
 }
 export function decodeTaskCounts(v: unknown, p = "$"): TaskCounts {
   return decObject(v, p, (o) => ({
+    pendingRequests: decNumber(o.pendingRequests, `${p}.pendingRequests`, true),
     subtasks: decNumber(o.subtasks, `${p}.subtasks`, true),
     subtasksDone: decNumber(o.subtasksDone, `${p}.subtasksDone`, true),
     checklist: decNumber(o.checklist, `${p}.checklist`, true),
@@ -788,6 +1036,10 @@ export type TaskEventKind =
   | "ATTACHMENT_ADDED"
   | "ATTACHMENT_REMOVED"
   | "SUBTASK_ADDED"
+  | "REQUEST_CREATED"
+  | "REQUEST_APPROVED"
+  | "REQUEST_REJECTED"
+  | "REQUEST_CANCELED"
 export function decodeTaskEventKind(v: unknown, p = "$"): TaskEventKind {
   return decEnum(v, p, [
     "CREATED",
@@ -810,6 +1062,10 @@ export function decodeTaskEventKind(v: unknown, p = "$"): TaskEventKind {
     "ATTACHMENT_ADDED",
     "ATTACHMENT_REMOVED",
     "SUBTASK_ADDED",
+    "REQUEST_CREATED",
+    "REQUEST_APPROVED",
+    "REQUEST_REJECTED",
+    "REQUEST_CANCELED",
   ] as const)
 }
 
@@ -924,12 +1180,14 @@ export interface TaskViewer {
   canManage: boolean
   canManageOwners: boolean
   isAssignee: boolean
+  canRequest: boolean
 }
 export function decodeTaskViewer(v: unknown, p = "$"): TaskViewer {
   return decObject(v, p, (o) => ({
     canManage: decBoolean(o.canManage, `${p}.canManage`),
     canManageOwners: decBoolean(o.canManageOwners, `${p}.canManageOwners`),
     isAssignee: decBoolean(o.isAssignee, `${p}.isAssignee`),
+    canRequest: decBoolean(o.canRequest, `${p}.canRequest`),
   }))
 }
 

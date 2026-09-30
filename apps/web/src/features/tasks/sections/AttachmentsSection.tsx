@@ -8,10 +8,13 @@ import styles from "./sections.module.css"
 export function AttachmentsSection({ vm }: { vm: TaskDetailVM }) {
   const upload = useAction("attachments.upload")
   const remove = useAction("attachments.delete")
+  const propose = useAction("requests.propose")
   const uploads = useUploadProgress(vm.id)
   const input = useRef<HTMLInputElement>(null)
   const inputId = useId()
   const canEdit = vm.mode === "manage"
+  const requesting = vm.mode === "request"
+  const error = remove.error ?? propose.error
 
   return (
     <section className={styles.section} aria-labelledby="attachments-title">
@@ -29,6 +32,9 @@ export function AttachmentsSection({ vm }: { vm: TaskDetailVM }) {
               <span className={styles.muted}>{a.sizeText}</span>
               <span className={`${styles.muted} ${styles.grow}`}>
                 {a.metaText}
+                {a.pendingText && (
+                  <span className={styles.pending}> · {a.pendingText}</span>
+                )}
               </span>
               {canEdit && (
                 <IconButton
@@ -42,6 +48,25 @@ export function AttachmentsSection({ vm }: { vm: TaskDetailVM }) {
                       .catch(() => {})
                   }
                 />
+              )}
+              {requesting && !a.pendingText && (
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  disabled={propose.pending}
+                  aria-label={`Request removal of ${a.filename}`}
+                  onClick={() =>
+                    propose
+                      .run({
+                        taskId: vm.id,
+                        kind: "ATTACHMENT_REMOVE",
+                        payload: { attachmentId: a.id },
+                      })
+                      .catch(() => {})
+                  }
+                >
+                  Request removal
+                </Button>
               )}
             </li>
           ))}
@@ -68,9 +93,9 @@ export function AttachmentsSection({ vm }: { vm: TaskDetailVM }) {
           ))}
         </ul>
       )}
-      {remove.error && (
+      {error && (
         <p role="alert" className={styles.error}>
-          {remove.error.message}
+          {error.message}
         </p>
       )}
       {vm.canAttach && (

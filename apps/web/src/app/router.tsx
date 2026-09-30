@@ -3,6 +3,7 @@ import { createBrowserRouter, type RouteObject } from "react-router"
 import { LoginPage } from "../features/auth/LoginPage.tsx"
 import { ClientDetailPage } from "../features/clients/ClientDetailPage.tsx"
 import { ClientsPage } from "../features/clients/ClientsPage.tsx"
+import { InboxPage } from "../features/inbox/InboxPage.tsx"
 import { HomePage } from "../features/system/HomePage.tsx"
 import { listParams, TasksPage } from "../features/tasks/TasksPage.tsx"
 import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
@@ -71,6 +72,18 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
                   bridge.prefetch("clients.detail", {
                     clientId: params.clientId,
                   })
+                return null
+              },
+            },
+            {
+              path: "/inbox",
+              element: <InboxPage />,
+              loader: ({ request }) => {
+                const unread =
+                  new URL(request.url).searchParams.get("filter") === "unread"
+                bridge.prefetch("inbox.list", {
+                  filter: unread ? "unread" : "all",
+                })
                 return null
               },
             },

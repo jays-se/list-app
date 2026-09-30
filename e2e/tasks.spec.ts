@@ -120,18 +120,19 @@ test("create, filter, edit and delete a task", async ({ browser }) => {
       .getByRole("link", { name: /Fix login bug/ })
   ).toContainText(/Due (9 Jan|Jan 9),? 2099/)
 
-  // The member sees it in "Assigned to me", read-only.
+  // The member sees it in "Assigned to me" and can only request changes (E5-S3).
   await member.page.getByRole("link", { name: "Tasks" }).click()
   await member.page.getByRole("checkbox", { name: "Assigned to me" }).check()
   await member.page.getByRole("link", { name: /Fix login bug/ }).click()
   await expect(
-    member.page.getByText(
-      "You can view this task. Its creator and owners can change it."
-    )
+    member.page.getByText(/Changes you make go to its creator and owners/)
   ).toBeVisible()
   await expect(
     member.page.getByRole("button", { name: "Save changes" })
   ).toHaveCount(0)
+  await expect(
+    member.page.getByRole("button", { name: "Request changes" })
+  ).toBeDisabled()
 
   // Delete with confirmation.
   await page.getByRole("link", { name: /Fix login bug/ }).click()

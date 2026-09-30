@@ -21,8 +21,11 @@ import (
 	"github.com/intellicars/list-app/apps/api/internal/blobstore"
 	"github.com/intellicars/list-app/apps/api/internal/db"
 	mdl "github.com/intellicars/list-app/apps/api/internal/modules/task/taskmdl"
+	"github.com/intellicars/list-app/apps/api/internal/outbox"
 	"github.com/intellicars/list-app/apps/api/internal/uuidx"
 )
+
+const MsgNoNesting = "Subtasks can't have subtasks"
 
 var (
 	ErrNotFound       = &apperr.NotFound{Detail: "This task no longer exists."}
@@ -96,67 +99,11 @@ func (s *TaskSvc) Get(ctx context.Context, tn Caller, id string) (mdl.Task, mdl.
 
 // Create inserts a task (or a subtask when ParentID is set).
 func (s *TaskSvc) Create(ctx context.Context, tn Caller, req mdl.CreateTaskReq) (mdl.Task, mdl.Viewer, error) {
-	v, err := validate(fields{
-		Title: req.Title, Description: req.Description,
-		Status: orDefault(req.Status, "TODO"), Priority: orDefault(req.Priority, "NONE"),
-		StartDate: req.StartDate, EndDate: req.EndDate, DueDate: req.DueDate,
-	})
-	if err != nil {
-		return mdl.Task{}, mdl.Viewer{}, err
-	}
 	var task mdl.Task
-	err = db.WithTenant(ctx, s.pool, tn.Tenant, func(tx pgx.Tx) error {
-		if err := checkMembers(ctx, tx, tn.WorkspaceID, req.AssigneeIDs, "assigneeIds"); err != nil {
-			return err
-		}
-		if err := checkLabels(ctx, tx, tn.WorkspaceID, req.LabelIDs); err != nil {
-			return err
-		}
-		clientID, _, err := checkClient(ctx, tx, tn.WorkspaceID, req.ClientID)
+	err := dbTenant(ctx, s, tn, func(tx pgx.Tx) error {
+		id, err := createTx(ctx, tx, tn, req)
 		if err != nil {
 			return err
-		}
-		var parentID *string
-		if req.ParentID != nil && *req.ParentID != "" {
-			parent, err := load(ctx, tx, tn.WorkspaceID, *req.ParentID, true)
-			if errors.Is(err, ErrNotFound) {
-				return apperr.Field("parentId", "The parent task no longer exists")
-			}
-			if err != nil {
-				return err
-			}
-			if parent.Parent != nil {
-				return apperr.Field("parentId", "Subtasks can't have subtasks")
-			}
-			if err := Authorize(accessOf(parent, tn), tn.UserID, ActionUpdate); err != nil {
-				return err
-			}
-			parentID = &parent.ID
-		}
-		var id string
-		if err := tx.QueryRow(ctx, `
-			INSERT INTO tasks (workspace_id, title, description, status, priority, start_date, end_date, due_date, created_by, client_id, parent_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-			tn.WorkspaceID, v.Title, v.Description, v.Status, v.Priority, v.StartDate, v.EndDate, v.DueDate, tn.UserID, clientID, parentID,
-		).Scan(&id); err != nil {
-			return err
-		}
-		if err := replaceSet(ctx, tx, "task_assignees", "user_id", tn.WorkspaceID, id, req.AssigneeIDs); err != nil {
-			return err
-		}
-		if err := replaceSet(ctx, tx, "task_labels", "label_id", tn.WorkspaceID, id, req.LabelIDs); err != nil {
-			return err
-		}
-		if err := enterStatus(ctx, tx, tn.WorkspaceID, id, v.Status); err != nil {
-			return err
-		}
-		if err := emit(ctx, tx, tn, id, event{Kind: EvCreated}); err != nil {
-			return err
-		}
-		if parentID != nil {
-			if err := emit(ctx, tx, tn, *parentID, event{Kind: EvSubtaskAdded, Subject: truncate(v.Title, 120)}); err != nil {
-				return err
-			}
 		}
 		task, err = loadDetail(ctx, tx, tn.WorkspaceID, id)
 		return err
@@ -168,6 +115,79 @@ func (s *TaskSvc) Create(ctx context.Context, tn Caller, req mdl.CreateTaskReq) 
 	return task, Evaluate(accessOf(task, tn), tn.UserID), nil
 }
 
+// createTx validates and inserts a task in tx; approving a SUBTASK_ADD
+// request reuses it (ADR-0023).
+func createTx(ctx context.Context, tx pgx.Tx, tn Caller, req mdl.CreateTaskReq) (string, error) {
+	v, err := validate(fields{
+		Title: req.Title, Description: req.Description,
+		Status: orDefault(req.Status, "TODO"), Priority: orDefault(req.Priority, "NONE"),
+		StartDate: req.StartDate, EndDate: req.EndDate, DueDate: req.DueDate,
+	})
+	if err != nil {
+		return "", err
+	}
+	if err := checkMembers(ctx, tx, tn.WorkspaceID, req.AssigneeIDs, "assigneeIds"); err != nil {
+		return "", err
+	}
+	if err := checkLabels(ctx, tx, tn.WorkspaceID, req.LabelIDs); err != nil {
+		return "", err
+	}
+	clientID, _, err := checkClient(ctx, tx, tn.WorkspaceID, req.ClientID)
+	if err != nil {
+		return "", err
+	}
+	var parentID *string
+	if req.ParentID != nil && *req.ParentID != "" {
+		parent, err := load(ctx, tx, tn.WorkspaceID, *req.ParentID, true)
+		if errors.Is(err, ErrNotFound) {
+			return "", apperr.Field("parentId", "The parent task no longer exists")
+		}
+		if err != nil {
+			return "", err
+		}
+		if parent.Parent != nil {
+			return "", apperr.Field("parentId", MsgNoNesting)
+		}
+		if err := Authorize(accessOf(parent, tn), tn.UserID, ActionUpdate); err != nil {
+			return "", err
+		}
+		parentID = &parent.ID
+	}
+	var id string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO tasks (workspace_id, title, description, status, priority, start_date, end_date, due_date, created_by, client_id, parent_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+		tn.WorkspaceID, v.Title, v.Description, v.Status, v.Priority, v.StartDate, v.EndDate, v.DueDate, tn.UserID, clientID, parentID,
+	).Scan(&id); err != nil {
+		return "", err
+	}
+	assignees := dedupe(req.AssigneeIDs)
+	if err := replaceSet(ctx, tx, "task_assignees", "user_id", tn.WorkspaceID, id, assignees); err != nil {
+		return "", err
+	}
+	if err := replaceSet(ctx, tx, "task_labels", "label_id", tn.WorkspaceID, id, req.LabelIDs); err != nil {
+		return "", err
+	}
+	if err := enterStatus(ctx, tx, tn.WorkspaceID, id, v.Status); err != nil {
+		return "", err
+	}
+	if err := emit(ctx, tx, tn, id, event{Kind: EvCreated}); err != nil {
+		return "", err
+	}
+	if parentID != nil {
+		if err := emit(ctx, tx, tn, *parentID, event{Kind: EvSubtaskAdded, Subject: truncate(v.Title, 120)}); err != nil {
+			return "", err
+		}
+	}
+	if len(assignees) > 0 {
+		if err := outbox.Emit(ctx, tx, tn.WorkspaceID, outbox.KindTaskAssigned,
+			outbox.TaskAssigned{TaskID: id, ActorID: tn.UserID, UserIDs: assignees}); err != nil {
+			return "", err
+		}
+	}
+	return id, nil
+}
+
 // Update applies the present fields if ifMatch equals the current version.
 func (s *TaskSvc) Update(ctx context.Context, tn Caller, id, ifMatch string, req mdl.UpdateTaskReq) (mdl.Task, mdl.Viewer, error) {
 	expected, err := parseETag(ifMatch)
@@ -175,7 +195,7 @@ func (s *TaskSvc) Update(ctx context.Context, tn Caller, id, ifMatch string, req
 		return mdl.Task{}, mdl.Viewer{}, err
 	}
 	var task mdl.Task
-	err = db.WithTenant(ctx, s.pool, tn.Tenant, func(tx pgx.Tx) error {
+	err = dbTenant(ctx, s, tn, func(tx pgx.Tx) error {
 		cur, err := load(ctx, tx, tn.WorkspaceID, id, true)
 		if err != nil {
 			return err
@@ -186,46 +206,7 @@ func (s *TaskSvc) Update(ctx context.Context, tn Caller, id, ifMatch string, req
 		if cur.Version != expected {
 			return ErrStale
 		}
-		before := fieldsOf(cur)
-		merged := before
-		apply(&merged, req)
-		v, err := validate(merged)
-		if err != nil {
-			return err
-		}
-		clientID := clientIDOf(cur)
-		clientName := ""
-		if cur.Client != nil {
-			clientName = cur.Client.Name
-		}
-		newClientName := clientName
-		if req.ClientID.Set {
-			clientID, newClientName, err = checkClient(ctx, tx, tn.WorkspaceID, req.ClientID.Value)
-			if err != nil {
-				return err
-			}
-		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE tasks SET title = $3, description = $4, status = $5, priority = $6,
-			       start_date = $7, end_date = $8, due_date = $9, client_id = $10,
-			       version = version + 1, updated_at = now()
-			 WHERE id = $1 AND workspace_id = $2`,
-			id, tn.WorkspaceID, v.Title, v.Description, v.Status, v.Priority, v.StartDate, v.EndDate, v.DueDate, clientID); err != nil {
-			return err
-		}
-		events := changeEvents(before, fieldsOf(mdl.Task{
-			Title: v.Title, Description: v.Description, Status: v.Status, Priority: v.Priority,
-			StartDate: v.StartDate, EndDate: v.EndDate, DueDate: v.DueDate,
-		}))
-		if clientName != newClientName {
-			events = append(events, event{Kind: EvUpdated, Field: "client", From: clientName, To: newClientName})
-		}
-		if cur.Status != v.Status {
-			if err := enterStatus(ctx, tx, tn.WorkspaceID, id, v.Status); err != nil {
-				return err
-			}
-		}
-		if err := emit(ctx, tx, tn, id, events...); err != nil {
+		if err := updateTx(ctx, tx, tn, cur, req); err != nil {
 			return err
 		}
 		task, err = loadDetail(ctx, tx, tn.WorkspaceID, id)
@@ -236,6 +217,56 @@ func (s *TaskSvc) Update(ctx context.Context, tn Caller, id, ifMatch string, req
 	}
 	s.log.Info("task_updated", "workspace_id", tn.WorkspaceID, "task_id", id, "user_id", tn.UserID, "version", task.Version)
 	return task, Evaluate(accessOf(task, tn), tn.UserID), nil
+}
+
+// updateTx merges req onto cur (locked and authorized by the caller),
+// validates, writes, and records events; approving an UPDATE request
+// reuses it (ADR-0023).
+func updateTx(ctx context.Context, tx pgx.Tx, tn Caller, cur mdl.Task, req mdl.UpdateTaskReq) error {
+	before := fieldsOf(cur)
+	merged := before
+	apply(&merged, req)
+	v, err := validate(merged)
+	if err != nil {
+		return err
+	}
+	clientID := clientIDOf(cur)
+	clientName := ""
+	if cur.Client != nil {
+		clientName = cur.Client.Name
+	}
+	newClientName := clientName
+	if req.ClientID.Set {
+		clientID, newClientName, err = checkClient(ctx, tx, tn.WorkspaceID, req.ClientID.Value)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE tasks SET title = $3, description = $4, status = $5, priority = $6,
+		       start_date = $7, end_date = $8, due_date = $9, client_id = $10,
+		       version = version + 1, updated_at = now()
+		 WHERE id = $1 AND workspace_id = $2`,
+		cur.ID, tn.WorkspaceID, v.Title, v.Description, v.Status, v.Priority, v.StartDate, v.EndDate, v.DueDate, clientID); err != nil {
+		return err
+	}
+	events := changeEvents(before, fieldsOf(mdl.Task{
+		Title: v.Title, Description: v.Description, Status: v.Status, Priority: v.Priority,
+		StartDate: v.StartDate, EndDate: v.EndDate, DueDate: v.DueDate,
+	}))
+	if clientName != newClientName {
+		events = append(events, event{Kind: EvUpdated, Field: "client", From: clientName, To: newClientName})
+	}
+	if cur.Status != v.Status {
+		if err := enterStatus(ctx, tx, tn.WorkspaceID, cur.ID, v.Status); err != nil {
+			return err
+		}
+		if err := outbox.Emit(ctx, tx, tn.WorkspaceID, outbox.KindTaskStatus,
+			outbox.TaskStatus{TaskID: cur.ID, ActorID: tn.UserID, To: v.Status}); err != nil {
+			return err
+		}
+	}
+	return emit(ctx, tx, tn, cur.ID, events...)
 }
 
 func fieldsOf(t mdl.Task) fields {

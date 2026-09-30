@@ -39,6 +39,7 @@ func (h *TaskHdlr) RegisterRoutes(r *apiserver.Router) {
 	r.Handle("PUT /api/v1/tasks/{taskId}/owners", ws(h.replaceUsers(tasksvc.SetOwners)))
 	r.Handle("PUT /api/v1/tasks/{taskId}/labels", ws(h.replaceLabels))
 	h.registerCollab(r)
+	h.registerRequests(r)
 }
 
 func tenant(r *http.Request) tasksvc.Caller {

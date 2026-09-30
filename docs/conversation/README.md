@@ -18,6 +18,7 @@ This folder records the discussions that shaped the product, one dated file per 
 | 7 | 2026-09-30 | Sprint 1 | "Start Sprint 1" | Sign-in (Google OIDC plus a dev provider, server sessions, CSRF), workspaces (create, join, switch, members, rotate) under RLS, OpenAPI codegen, compose stack, login, onboarding and settings UI. 161 unit + 9 e2e + Go/Postgres tests pass locally. | ✅ | 0017–0019 | [sprint 1](2026-09-30-sprint-1.md) |
 | 8 | 2026-09-30 | Sprint 2 | "starts with sprint 2" | Tasks: API with filters, If-Match concurrency, a permission policy with owners, and labels; worker views and actions that diff saves; tasks UI with URL-driven filters, drawers, read-only mode and conflict recovery; ui-kit Drawer, Dialog and LabelChip. 228 unit + 11 e2e + Go/Postgres tests pass locally. | ✅ | 0020 | [sprint 2](2026-09-30-sprint-2.md) |
 | 9 | 2026-09-30 | Owner rights; Sprint 3 | "Yes workspace owner can edit any task, and start sprint 3" | Workspace owners manage all tasks (ADR-0021). Clients, subtasks, checklist, comments with mentions, attachments over presigned blob storage (local + S3 drivers), activity history and time in status. 252 unit + 13 e2e + Go/Postgres tests pass locally. | ✅ | 0021, 0022 | [sprint 3](2026-09-30-sprint-3.md) |
+| 10 | 2026-09-30 | CI coverage fix; Sprint 4 | "I have commited the changes to git, and start with sprint 4" | CI coverage gate fixed (`pnpm check` now runs coverage). Change requests (create, approve through the edit path, reject, withdraw, stale 409), transactional outbox + dispatcher, notifications (6 kinds, DUE scheduler, settings), request-mode UI and inbox. 287 unit + 14 e2e + Go/Postgres tests pass locally. | ✅ | 0023 | [sprint 4](2026-09-30-sprint-4.md) |
 
 ## Open items across conversations
 | Item | Raised in | Status |
@@ -30,3 +31,5 @@ This folder records the discussions that shaped the product, one dated file per 
 | Google OAuth client credentials for real sign-in | #7 | ⏳ open |
 | Should workspace owners be able to edit any task? (ADR-0020) | #8 | ✅ yes, in #9 (ADR-0021) |
 | Verify the S3 blob driver against a real S3/MinIO server | #9 | ⏳ open |
+| `ATTACHMENT_ADD` change requests (staged uploads) | #10 | ⏳ deferred (ADR-0023) |
+| DUE reminders use the UTC date; per-workspace time zones? | #10 | ⏳ open |

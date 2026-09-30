@@ -37,7 +37,7 @@ export function toSubtasks(t: Task): {
 }
 
 export function toChecklist(t: Task): {
-  checklist: ChecklistItemVM[]
+  checklist: Omit<ChecklistItemVM, "pendingText">[]
   checklistText: string
 } {
   const checklist = t.checklist.map((c) => ({
@@ -102,7 +102,7 @@ export function toAttachments(
   now: number,
   locale: string
 ): {
-  attachments: AttachmentVM[]
+  attachments: Omit<AttachmentVM, "pendingText">[]
   attachmentsText: string
   canAttach: boolean
 } {

@@ -207,17 +207,21 @@ func (s *TaskSvc) DeleteAttachment(ctx context.Context, tn Caller, id string) er
 		if err := Authorize(accessOf(task, tn), tn.UserID, ActionUpdate); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM attachments WHERE id = $1`, id); err != nil {
-			return err
-		}
 		key = row.StorageKey
-		if row.Status == "READY" {
-			return emit(ctx, tx, tn, row.TaskID, event{Kind: EvAttachmentRemoved, Subject: row.Filename})
-		}
-		return nil
+		return deleteAttachmentTx(ctx, tx, tn, row)
 	})
 	if err == nil && key != "" {
 		s.deleteBlobs(ctx, []string{key})
 	}
 	return wrap("attachment_delete", err)
+}
+
+func deleteAttachmentTx(ctx context.Context, tx pgx.Tx, tn Caller, row attachmentRow) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM attachments WHERE id = $1`, row.ID); err != nil {
+		return err
+	}
+	if row.Status == "READY" {
+		return emit(ctx, tx, tn, row.TaskID, event{Kind: EvAttachmentRemoved, Subject: row.Filename})
+	}
+	return nil
 }

@@ -32,13 +32,19 @@ function makeTask(over: Record<string, unknown> = {}) {
     createdAt: "2026-09-30T10:00:00Z",
     updatedAt: "2026-09-30T10:00:00Z",
     version: 1,
-    viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+    viewer: {
+      canManage: true,
+      canManageOwners: true,
+      isAssignee: false,
+      canRequest: false,
+    },
     client: null,
     parent: null,
     subtasks: [],
     checklist: [],
     comments: [],
     attachments: [],
+    requests: [],
     ...over,
   }
 }
@@ -51,6 +57,7 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
             canManage: false,
             canManageOwners: false,
             isAssignee: true,
+            canRequest: false,
           },
         }
       : {}
@@ -111,6 +118,7 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
           checklistDone: 0,
           comments: 0,
           attachments: 0,
+          pendingRequests: 0,
         }
         return json({
           tasks: url.includes("status=DONE") ? [] : [{ ...rest, counts }],

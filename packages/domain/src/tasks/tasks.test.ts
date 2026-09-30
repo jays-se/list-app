@@ -64,6 +64,7 @@ function summary(over: Partial<TaskSummary> = {}): TaskSummary {
       checklistDone: 0,
       comments: 0,
       attachments: 0,
+      pendingRequests: 0,
     },
     ...over,
   }
@@ -245,18 +246,33 @@ const task: Task = {
   createdAt: "2026-09-30T10:00:00Z",
   updatedAt: "2026-09-30T10:00:00Z",
   version: 3,
-  viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+  viewer: {
+    canManage: true,
+    canManageOwners: true,
+    isAssignee: false,
+    canRequest: false,
+  },
   client: null,
   parent: null,
   subtasks: [],
   checklist: [],
   comments: [],
   attachments: [],
+  requests: [],
 }
 
 describe("detail and diff", () => {
   it("builds a detail view model with mode and owner candidates", () => {
-    const vm = toTaskDetailVM(task, members, [], noClients, TODAY, NOW, "en-GB")
+    const vm = toTaskDetailVM(
+      task,
+      members,
+      [],
+      noClients,
+      TODAY,
+      NOW,
+      "en-GB",
+      "u1"
+    )
     expect(vm.mode).toBe("manage")
     expect(vm.ownerCandidates.map((p) => p.id)).toEqual(["u2"])
     expect(vm.createdText).toBe("Created by Ada Lovelace on 30 Sept 2026")
@@ -268,7 +284,8 @@ describe("detail and diff", () => {
         noClients,
         TODAY,
         NOW,
-        "en"
+        "en",
+        "u1"
       ).mode
     ).toBe("view")
   })

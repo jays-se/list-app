@@ -46,4 +46,12 @@ Every table has `workspace_id` and a `<table>_tenant` RLS policy (USING and WITH
 
 All tables have `workspace_id` and a `<table>_tenant` RLS policy.
 
-Feature tables (requests, docs, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.
+## Migration 0005: requests, outbox, notifications (Sprint 4, ADR-0023)
+| Table | Purpose | Notes |
+|---|---|---|
+| `change_requests` | Proposals by assignees | `kind` and `status` enums; `payload` jsonb (flat, per kind); `summary` is server text ("Change status to Done"); `note`/`review_note` ≤ 1000; `base_version` records the task version at request time. Cascades with the task. RLS. |
+| `outbox` | Transactional outbox | **System table, no RLS**, never exposed to handlers. `available_at`/`attempts`/`last_error` drive retries; `processed_at` marks done. |
+| `notifications` | In-app inbox | `UNIQUE (user_id, dedupe_key)` makes delivery idempotent. `task_id` is set to NULL on task delete; `task_title` keeps the title. RLS. |
+| `notification_settings` | Per-user switches | `(user_id, kind)`; no row = enabled. User-scoped, not workspace-scoped. |
+
+Feature tables for docs arrive with their feature tickets. Each adds a numbered migration and a section here.

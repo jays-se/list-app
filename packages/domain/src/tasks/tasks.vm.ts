@@ -39,6 +39,7 @@ import {
   statusOptions,
 } from "./tasks.labels.ts"
 import type { TaskFilter } from "./tasks.queries.ts"
+import { requestDraftFromTask, toRequests } from "./tasks.requests.vm.ts"
 
 const plural = (n: number, one: string, many = `${one}s`) =>
   `${n} ${n === 1 ? one : many}`
@@ -232,9 +233,24 @@ export function toTaskDetailVM(
   clients: ClientList,
   today: string,
   now: number,
-  locale: string
+  locale: string,
+  userId: string
 ): TaskDetailVM {
   const options = toFormOptionsVM(members, labels, clients, today)
+  const { pendingItems, ...requests } = toRequests(
+    t,
+    userId,
+    now,
+    today,
+    locale
+  )
+  const mode = t.viewer.canManage
+    ? "manage"
+    : t.viewer.canRequest
+      ? "request"
+      : "view"
+  const checklist = toChecklist(t)
+  const attachments = toAttachments(t, now, locale)
   return {
     id: t.id,
     title: t.title,
@@ -249,7 +265,7 @@ export function toTaskDetailVM(
     labels: t.labels,
     createdText: `Created by ${t.createdBy.name} on ${formatLongDate(t.createdAt, locale)}`,
     updatedText: `Updated ${formatLongDate(t.updatedAt, locale)}`,
-    mode: t.viewer.canManage ? "manage" : "view",
+    mode,
     canManageOwners: t.viewer.canManageOwners,
     version: t.version,
     saved: draftFromTask(t),
@@ -259,8 +275,20 @@ export function toTaskDetailVM(
     parent: t.parent ? { id: t.parent.id, title: t.parent.title } : null,
     ...toSubtasks(t),
     canAddSubtask: t.viewer.canManage && !t.parent,
-    ...toChecklist(t),
+    canRequestSubtask: mode === "request" && !t.parent,
+    checklistText: checklist.checklistText,
+    checklist: checklist.checklist.map((c) => ({
+      ...c,
+      pendingText: pendingItems.get(c.id) ?? null,
+    })),
     comments: toComments(t, now, locale),
-    ...toAttachments(t, now, locale),
+    attachmentsText: attachments.attachmentsText,
+    canAttach: attachments.canAttach,
+    attachments: attachments.attachments.map((a) => ({
+      ...a,
+      pendingText: pendingItems.get(a.id) ?? null,
+    })),
+    requestDraft: requestDraftFromTask(t),
+    ...requests,
   }
 }

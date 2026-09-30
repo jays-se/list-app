@@ -30,7 +30,14 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**"],
-      exclude: ["**/*.test.*", "**/index.ts", "packages/worker/src/entry.ts"],
+      exclude: [
+        "**/*.test.*",
+        "**/*.fixture.ts",
+        "**/index.ts",
+        "packages/worker/src/entry.ts",
+        // Generator output (ADR-0018); the generator and decoders have their own tests.
+        "packages/api-client/src/generated.ts",
+      ],
       thresholds: { lines: 80, functions: 80, branches: 75 },
     },
   },
