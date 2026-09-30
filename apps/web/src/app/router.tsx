@@ -1,10 +1,12 @@
 import type { Bridge } from "@app/bridge"
 import { createBrowserRouter, type RouteObject } from "react-router"
 import { LoginPage } from "../features/auth/LoginPage.tsx"
+import { CalendarPage } from "../features/calendar/CalendarPage.tsx"
+import { CapturePage } from "../features/capture/CapturePage.tsx"
 import { ClientDetailPage } from "../features/clients/ClientDetailPage.tsx"
 import { ClientsPage } from "../features/clients/ClientsPage.tsx"
+import { DashboardPage } from "../features/dashboard/DashboardPage.tsx"
 import { InboxPage } from "../features/inbox/InboxPage.tsx"
-import { HomePage } from "../features/system/HomePage.tsx"
 import { listParams, TasksPage } from "../features/tasks/TasksPage.tsx"
 import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
 import { WorkspaceSettingsPage } from "../features/workspace/WorkspaceSettingsPage.tsx"
@@ -39,12 +41,23 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
           children: [
             {
               index: true,
-              element: <HomePage />,
+              element: <DashboardPage />,
               loader: () => {
+                bridge.prefetch("dashboard.summary", {})
                 bridge.prefetch("system.info", {})
                 return null
               },
             },
+            {
+              path: "/calendar",
+              element: <CalendarPage />,
+              loader: ({ request }) => {
+                const month = new URL(request.url).searchParams.get("month")
+                bridge.prefetch("calendar.month", month ? { month } : {})
+                return null
+              },
+            },
+            { path: "/capture", element: <CapturePage /> },
             {
               path: "/tasks",
               element: <TasksPage />,

@@ -175,6 +175,13 @@ describe("row activity text", () => {
       updatedAt: "2026-09-30T00:00:00Z",
       client: null,
       parent: null,
+      source: null,
+      viewer: {
+        canManage: true,
+        canManageOwners: true,
+        isAssignee: false,
+        canRequest: false,
+      },
     }
     const counts = (comments: number, attachments: number) => ({
       subtasks: 0,

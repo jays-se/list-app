@@ -127,6 +127,24 @@ export function decodeAttachmentUploadResponse(
   }))
 }
 
+export interface BulkCreateTasksRequest {
+  source: TaskSource
+  startDate: string
+  endDate: string
+  titles: string[]
+}
+export function decodeBulkCreateTasksRequest(
+  v: unknown,
+  p = "$"
+): BulkCreateTasksRequest {
+  return decObject(v, p, (o) => ({
+    source: decodeTaskSource(o.source, `${p}.source`),
+    startDate: decString(o.startDate, `${p}.startDate`),
+    endDate: decString(o.endDate, `${p}.endDate`),
+    titles: decArray(o.titles, `${p}.titles`, (x, xp) => decString(x, xp)),
+  }))
+}
+
 export interface ChangeRequest {
   id: string
   kind: ChangeRequestKind
@@ -680,6 +698,15 @@ export function decodeMemberList(v: unknown, p = "$"): MemberList {
   }))
 }
 
+export interface MemberResponse {
+  member: Member
+}
+export function decodeMemberResponse(v: unknown, p = "$"): MemberResponse {
+  return decObject(v, p, (o) => ({
+    member: decodeMember(o.member, `${p}.member`),
+  }))
+}
+
 export interface MeResponse {
   user: User
 }
@@ -1118,6 +1145,11 @@ export function decodeTaskResponse(v: unknown, p = "$"): TaskResponse {
   return decObject(v, p, (o) => ({ task: decodeTask(o.task, `${p}.task`) }))
 }
 
+export type TaskSource = "MEETING_NOTE" | "PERSONAL"
+export function decodeTaskSource(v: unknown, p = "$"): TaskSource {
+  return decEnum(v, p, ["MEETING_NOTE", "PERSONAL"] as const)
+}
+
 export type TaskStatus =
   | "BACKLOG"
   | "TODO"
@@ -1152,6 +1184,8 @@ export interface TaskSummary {
   client: ClientRef | null
   parent: TaskRef | null
   counts: TaskCounts
+  source: TaskSource | null
+  viewer: TaskViewer
 }
 export function decodeTaskSummary(v: unknown, p = "$"): TaskSummary {
   return decObject(v, p, (o) => ({
@@ -1172,6 +1206,9 @@ export function decodeTaskSummary(v: unknown, p = "$"): TaskSummary {
     client: o.client === null ? null : decodeClientRef(o.client, `${p}.client`),
     parent: o.parent === null ? null : decodeTaskRef(o.parent, `${p}.parent`),
     counts: decodeTaskCounts(o.counts, `${p}.counts`),
+    source:
+      o.source === null ? null : decodeTaskSource(o.source, `${p}.source`),
+    viewer: decodeTaskViewer(o.viewer, `${p}.viewer`),
   }))
 }
 
@@ -1214,6 +1251,16 @@ export function decodeUpdateChecklistItemRequest(
               : decString(o.assigneeId, `${p}.assigneeId`),
         }),
   }))
+}
+
+export interface UpdateMemberRequest {
+  role: Role
+}
+export function decodeUpdateMemberRequest(
+  v: unknown,
+  p = "$"
+): UpdateMemberRequest {
+  return decObject(v, p, (o) => ({ role: decodeRole(o.role, `${p}.role`) }))
 }
 
 /** Only the fields present are changed. */

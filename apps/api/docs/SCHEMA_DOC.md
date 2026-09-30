@@ -54,4 +54,10 @@ All tables have `workspace_id` and a `<table>_tenant` RLS policy.
 | `notifications` | In-app inbox | `UNIQUE (user_id, dedupe_key)` makes delivery idempotent. `task_id` is set to NULL on task delete; `task_title` keeps the title. RLS. |
 | `notification_settings` | Per-user switches | `(user_id, kind)`; no row = enabled. User-scoped, not workspace-scoped. |
 
+## Migration 0006: capture and idempotency (Sprint 5, ADR-0024)
+| Table / column | Purpose | Notes |
+|---|---|---|
+| `tasks.source` | Where a captured task came from | `MEETING_NOTE`, `PERSONAL` or NULL (made in the app) |
+| `idempotency_keys` | Safe retries for `POST /tasks/bulk` | PK `(user_id, key)`, `request_hash`, `response` stored as **text** so a replay is byte-identical, `workspace_id`. RLS. Rows are written in the same transaction as the tasks. Pruning old rows is an E12 job. |
+
 Feature tables for docs arrive with their feature tickets. Each adds a numbered migration and a section here.

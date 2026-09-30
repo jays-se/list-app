@@ -19,6 +19,8 @@ type CreateTaskReq struct {
 	LabelIDs    []string `json:"labelIds"`
 	ClientID    *string  `json:"clientId"`
 	ParentID    *string  `json:"parentId"`
+	// Source is set by bulk capture only (not part of CreateTaskRequest).
+	Source *string `json:"-"`
 }
 
 func (r CreateTaskReq) ToJSON() ([]byte, error) { return json.Marshal(r) }
@@ -50,3 +52,13 @@ type LabelIDsReq struct {
 }
 
 func (r LabelIDsReq) ToJSON() ([]byte, error) { return json.Marshal(r) }
+
+// BulkCreateReq is api/openapi.yaml#BulkCreateTasksRequest (quick capture, E10-S1).
+type BulkCreateReq struct {
+	Source    string   `json:"source"`
+	StartDate string   `json:"startDate"`
+	EndDate   string   `json:"endDate"`
+	Titles    []string `json:"titles"`
+}
+
+func (r BulkCreateReq) ToJSON() ([]byte, error) { return json.Marshal(r) }

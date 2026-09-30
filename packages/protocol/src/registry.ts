@@ -5,6 +5,12 @@ import type {
   NotificationKindKey,
   NotificationSettingsVM,
 } from "./views/inbox.ts"
+import type {
+  CalendarVM,
+  CaptureParseResult,
+  CaptureSource,
+  DashboardVM,
+} from "./views/insights.ts"
 import type { MembersVM, SessionVM, WorkspaceRefVM } from "./views/session.ts"
 import type { SystemInfoVM } from "./views/system.ts"
 import type {
@@ -50,6 +56,9 @@ export interface ViewMap {
     params: Record<string, never>
     data: NotificationSettingsVM
   }
+  "dashboard.summary": { params: Record<string, never>; data: DashboardVM }
+  /** `month` is "YYYY-MM"; missing or invalid means this month. */
+  "calendar.month": { params: { month?: string }; data: CalendarVM }
 }
 
 type NoInput = Record<string, never>
@@ -156,6 +165,23 @@ export interface ActionMap {
   }
   "notifications.read": { input: { id: string }; result: null }
   "notifications.readAll": { input: NoInput; result: null }
+  /** Quick capture (E10-S1): the worker splits and cleans pasted text. */
+  "capture.parse": { input: { text: string }; result: CaptureParseResult }
+  /** All or nothing; field errors come back keyed by line id. */
+  "capture.create": {
+    input: {
+      batchId: string
+      source: CaptureSource
+      lines: { id: string; text: string }[]
+    }
+    result: { created: number }
+  }
+  "workspaces.leave": { input: NoInput; result: null }
+  "members.remove": { input: { userId: string }; result: null }
+  "members.setRole": {
+    input: { userId: string; role: "OWNER" | "MEMBER" }
+    result: null
+  }
   /** Optimistic toggle. */
   "notifications.setEnabled": {
     input: { kind: NotificationKindKey; enabled: boolean }

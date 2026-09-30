@@ -101,7 +101,6 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
         return json({ labels: [{ id: "l1", name: "Bug", color: "red" }] })
       case "GET /tasks": {
         const {
-          viewer: _v,
           owners: _o,
           description: _d,
           createdAt: _c,
@@ -109,6 +108,7 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
           checklist: _k,
           comments: _m,
           attachments: _a,
+          requests: _r,
           ...rest
         } = task
         const counts = {
@@ -121,7 +121,9 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
           pendingRequests: 0,
         }
         return json({
-          tasks: url.includes("status=DONE") ? [] : [{ ...rest, counts }],
+          tasks: url.includes("status=DONE")
+            ? []
+            : [{ ...rest, counts, source: null }],
         })
       }
       case "GET /tasks/t1":

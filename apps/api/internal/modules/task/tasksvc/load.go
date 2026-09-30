@@ -16,7 +16,7 @@ import (
 // as JSON aggregates (one row per task, no N+1).
 const taskSelect = `
 SELECT t.id, t.title, t.description, t.status, t.priority, t.start_date, t.end_date, t.due_date,
-       t.created_at, t.updated_at, t.version,
+       t.created_at, t.updated_at, t.version, t.source,
        json_build_object('id', cu.id, 'name', cu.name, 'image', cu.image_url),
        coalesce((SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'image', u.image_url) ORDER BY lower(u.name), u.id)
                    FROM task_assignees a JOIN users u ON u.id = a.user_id WHERE a.task_id = t.id), '[]'),
@@ -43,7 +43,7 @@ func scanTask(row pgx.Row) (mdl.Task, error) {
 	var t mdl.Task
 	var client, parent []byte
 	err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Status, &t.Priority, &t.StartDate, &t.EndDate, &t.DueDate,
-		&t.CreatedAt, &t.UpdatedAt, &t.Version, &t.CreatedBy, &t.Assignees, &t.Owners, &t.Labels, &client, &parent, &t.Counts)
+		&t.CreatedAt, &t.UpdatedAt, &t.Version, &t.Source, &t.CreatedBy, &t.Assignees, &t.Owners, &t.Labels, &client, &parent, &t.Counts)
 	if err != nil {
 		return t, err
 	}

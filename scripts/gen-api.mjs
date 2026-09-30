@@ -30,6 +30,8 @@ const SUPPORTED = new Set([
   "example",
   "minLength",
   "maxLength",
+  "minItems",
+  "maxItems",
 ])
 
 function check(schema, where) {

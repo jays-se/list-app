@@ -9,6 +9,8 @@ import (
 var (
 	Statuses   = []string{"BACKLOG", "TODO", "IN_PROGRESS", "TESTING", "DONE", "CANCELED"}
 	Priorities = []string{"URGENT", "HIGH", "MEDIUM", "LOW", "NONE"}
+	// Sources of captured tasks (E10-S1).
+	Sources = []string{"MEETING_NOTE", "PERSONAL"}
 )
 
 // Person is a user as shown on a task.
@@ -42,6 +44,7 @@ type Task struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Version     int
+	Source      *string
 	Client      *ClientRef
 	Parent      *TaskRef
 	Counts      Counts

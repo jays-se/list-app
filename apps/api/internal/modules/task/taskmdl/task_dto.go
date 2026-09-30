@@ -12,19 +12,20 @@ func dateOrNil(t *time.Time) *string {
 	return &s
 }
 
-func ToTaskSummaryRsp(t Task) TaskSummaryRsp {
+func ToTaskSummaryRsp(t Task, v Viewer) TaskSummaryRsp {
 	return TaskSummaryRsp{
 		ID: t.ID, Title: t.Title, Status: t.Status, Priority: t.Priority,
 		StartDate: t.StartDate.Format(DateLayout), EndDate: t.EndDate.Format(DateLayout), DueDate: dateOrNil(t.DueDate),
 		Assignees: t.Assignees, Labels: t.Labels, CreatedBy: t.CreatedBy, Version: t.Version, UpdatedAt: t.UpdatedAt,
-		Client: t.Client, Parent: t.Parent, Counts: t.Counts,
+		Client: t.Client, Parent: t.Parent, Counts: t.Counts, Source: t.Source, Viewer: v,
 	}
 }
 
-func ToTaskSummaryRspList(ts []Task) []TaskSummaryRsp {
+// ToTaskSummaryRspList pairs each task with the caller's permissions.
+func ToTaskSummaryRspList(ts []Task, viewer func(Task) Viewer) []TaskSummaryRsp {
 	out := make([]TaskSummaryRsp, 0, len(ts))
 	for _, t := range ts {
-		out = append(out, ToTaskSummaryRsp(t))
+		out = append(out, ToTaskSummaryRsp(t, viewer(t)))
 	}
 	return out
 }

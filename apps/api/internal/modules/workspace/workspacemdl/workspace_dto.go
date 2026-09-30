@@ -16,10 +16,14 @@ func ToWorkspaceRspList(ws []Workspace) []WorkspaceRsp {
 	return out
 }
 
+func ToMemberRsp(m Member) MemberRsp {
+	return MemberRsp{ID: m.UserID, Name: m.Name, Email: m.Email, Image: m.ImageURL, Role: m.Role, JoinedAt: m.JoinedAt}
+}
+
 func ToMemberRspList(ms []Member) []MemberRsp {
 	out := make([]MemberRsp, 0, len(ms))
 	for _, m := range ms {
-		out = append(out, MemberRsp{ID: m.UserID, Name: m.Name, Email: m.Email, Image: m.ImageURL, Role: m.Role, JoinedAt: m.JoinedAt})
+		out = append(out, ToMemberRsp(m))
 	}
 	return out
 }

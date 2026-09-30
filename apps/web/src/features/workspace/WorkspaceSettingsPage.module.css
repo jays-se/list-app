@@ -114,3 +114,14 @@
   margin: 0;
   color: var(--colorStatusDangerForeground1);
 }
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacingS);
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorStatusInfoBackground1);
+  color: var(--colorStatusInfoForeground1);
+}

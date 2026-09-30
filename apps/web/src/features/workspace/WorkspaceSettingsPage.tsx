@@ -1,14 +1,14 @@
 import { useAction, useView } from "@app/bridge"
-import { Avatar, Badge, Button, Spinner } from "@app/ui-kit"
+import { Button, Spinner } from "@app/ui-kit"
 import { useState } from "react"
 import { LabelsSection } from "./LabelsSection.tsx"
+import { MembersSection } from "./MembersSection.tsx"
 import { CreateWorkspaceForm, JoinWorkspaceForm } from "./WorkspaceForms.tsx"
 import styles from "./WorkspaceSettingsPage.module.css"
 
 /** Invite code, members, and adding another workspace (E3-S5). */
 export function WorkspaceSettingsPage() {
   const session = useView("session.current", {})
-  const members = useView("workspace.members", {})
   const rotate = useAction("workspaces.rotateInvite")
   const [copied, setCopied] = useState(false) // transient UI feedback
   const active = session.data?.activeWorkspace
@@ -70,41 +70,7 @@ export function WorkspaceSettingsPage() {
         )}
       </section>
 
-      <section className={styles.card} aria-labelledby="members-title">
-        <h2 id="members-title" className={styles.cardTitle}>
-          Members{" "}
-          {members.data && (
-            <span className={styles.count}>{members.data.countText}</span>
-          )}
-        </h2>
-        {members.status === "loading" && <Spinner label="Loading members" />}
-        {members.error && !members.data && (
-          <p role="alert" className={styles.error}>
-            {members.error.message}
-          </p>
-        )}
-        {members.data && (
-          <ul className={styles.members}>
-            {members.data.members.map((m) => (
-              <li key={m.id} className={styles.member}>
-                <Avatar name={m.name} image={m.image ?? undefined} size={32} />
-                <span className={styles.who}>
-                  <span className={styles.name}>
-                    {m.name}
-                    {m.isYou && <span className={styles.you}> (you)</span>}
-                  </span>
-                  <span className={styles.meta}>
-                    {m.email} · {m.joinedText}
-                  </span>
-                </span>
-                <Badge color={m.isOwner ? "brand" : "subtle"}>
-                  {m.roleLabel}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <MembersSection workspaceName={active.name} />
 
       <LabelsSection />
 

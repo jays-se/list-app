@@ -22,3 +22,10 @@ type SwitchWorkspaceReq struct {
 }
 
 func (r SwitchWorkspaceReq) ToJSON() ([]byte, error) { return json.Marshal(r) }
+
+// UpdateMemberReq is api/openapi.yaml#UpdateMemberRequest.
+type UpdateMemberReq struct {
+	Role string `json:"role"`
+}
+
+func (r UpdateMemberReq) ToJSON() ([]byte, error) { return json.Marshal(r) }

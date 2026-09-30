@@ -58,3 +58,10 @@ type InviteCodeRsp struct {
 }
 
 func (r InviteCodeRsp) ToJSON() ([]byte, error) { return json.Marshal(r) }
+
+// MemberEnvelopeRsp is api/openapi.yaml#MemberResponse.
+type MemberEnvelopeRsp struct {
+	Member MemberRsp `json:"member"`
+}
+
+func (r MemberEnvelopeRsp) ToJSON() ([]byte, error) { return json.Marshal(r) }

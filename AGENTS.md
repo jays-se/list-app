@@ -16,12 +16,13 @@ This is a team tool for tasks, change-request approvals, docs, clients, labels, 
 
 ## Status
 
-Sprint 4 is complete (2026-09-30).
+Sprint 5 is complete (2026-09-30).
 - **Sprints 0–2:** foundations, sign-in and workspaces, tasks.
 - **Sprint 3:** clients, subtasks, checklist, comments with mentions, attachments (blob storage), and activity history.
 - **Sprint 4:** change requests and request mode, the transactional outbox, in-app notifications with DUE reminders, the inbox and settings.
+- **Sprint 5:** dashboard, calendar, quick capture (idempotent bulk create), and leaving, removing or promoting members.
 
-Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 5 (dashboard, calendar, quick capture, member management).
+Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 6 (markdown docs and release hardening).
 
 ## Architecture in one screen
 

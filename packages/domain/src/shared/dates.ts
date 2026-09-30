@@ -60,3 +60,22 @@ export function formatLongDate(isoDateTime: string, locale: string): string {
     new Date(isoDateTime)
   )
 }
+
+/** Adds whole days to a YYYY-MM-DD date. */
+export function addDays(iso: string, days: number): string {
+  return new Date(toUTC(iso) + days * DAY_MS).toISOString().slice(0, 10)
+}
+
+/** 0 = Sunday … 6 = Saturday. */
+export function weekday(iso: string): number {
+  return new Date(toUTC(iso)).getUTCDay()
+}
+
+/** Formats a YYYY-MM-DD date with any Intl options (UTC, cached). */
+export function formatDate(
+  iso: string,
+  locale: string,
+  options: Intl.DateTimeFormatOptions
+): string {
+  return formatter(locale, options).format(toUTC(iso))
+}

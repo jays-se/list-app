@@ -273,6 +273,76 @@ paths:
               schema: { $ref: "#/components/schemas/InviteCodeResponse" }
         default:
           $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/current/leave:
+    post:
+      tags: [workspaces]
+      operationId: leaveWorkspace
+      summary: Leave the active workspace; 409 last_owner for the only owner (E3-S6)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Left; sessions move to another workspace or none
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/workspaces/current/members/{userId}:
+    parameters:
+      - { name: userId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [workspaces]
+      operationId: updateMember
+      summary: Change a member's role (OWNER only); the last owner can't be demoted
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMemberRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberResponse" }
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      tags: [workspaces]
+      operationId: removeMember
+      summary: Remove a member (OWNER only); their assignments, ownerships and pending requests go too
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Removed
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/tasks/bulk:
+    post:
+      tags: [tasks]
+      operationId: bulkCreateTasks
+      summary: Quick capture - create many tasks at once, all or nothing (E10-S1, ADR-0024)
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: 8-200 characters. A retry with the same key and body returns the first response.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkCreateTasksRequest" }
+      responses:
+        "201":
+          description: Created (or replayed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskList" }
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/tasks:
     get:
       tags: [tasks]
@@ -1050,6 +1120,31 @@ components:
         image: { type: [string, "null"] }
         role: { $ref: "#/components/schemas/Role" }
         joinedAt: { type: string, format: date-time }
+    MemberResponse:
+      type: object
+      required: [member]
+      properties:
+        member: { $ref: "#/components/schemas/Member" }
+    UpdateMemberRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+    TaskSource:
+      type: string
+      enum: [MEETING_NOTE, PERSONAL]
+    BulkCreateTasksRequest:
+      type: object
+      required: [source, startDate, endDate, titles]
+      properties:
+        source: { $ref: "#/components/schemas/TaskSource" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        titles:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: string }
     MemberList:
       type: object
       required: [members]
@@ -1096,7 +1191,7 @@ components:
         canRequest: { type: boolean, description: "An assignee who can't manage: proposes changes as requests (E5-S2)" }
     TaskSummary:
       type: object
-      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt, client, parent, counts]
+      required: [id, title, status, priority, startDate, endDate, dueDate, assignees, labels, createdBy, version, updatedAt, client, parent, counts, source, viewer]
       properties:
         id: { type: string }
         title: { type: string }
@@ -1123,6 +1218,12 @@ components:
             - { $ref: "#/components/schemas/TaskRef" }
             - { type: "null" }
         counts: { $ref: "#/components/schemas/TaskCounts" }
+        source:
+          description: Set on tasks made by quick capture
+          anyOf:
+            - { $ref: "#/components/schemas/TaskSource" }
+            - { type: "null" }
+        viewer: { $ref: "#/components/schemas/TaskViewer" }
     Task:
       type: object
       required: [id, title, description, status, priority, startDate, endDate, dueDate, assignees, owners, labels, createdBy, createdAt, updatedAt, version, viewer, client, parent, subtasks, checklist, comments, attachments, requests]

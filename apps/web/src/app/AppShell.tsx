@@ -15,10 +15,16 @@ export function AppShell() {
         <WorkspaceSwitcher />
         <nav aria-label="Primary" className={styles.nav}>
           <NavLink to="/" end className={navClass}>
-            Home
+            Dashboard
           </NavLink>
           <NavLink to="/tasks" className={navClass}>
             Tasks
+          </NavLink>
+          <NavLink to="/calendar" className={navClass}>
+            Calendar
+          </NavLink>
+          <NavLink to="/capture" className={navClass}>
+            Capture
           </NavLink>
           <NavLink to="/clients" className={navClass}>
             Clients

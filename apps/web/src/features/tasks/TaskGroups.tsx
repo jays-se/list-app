@@ -32,7 +32,7 @@ export function TaskGroups({
   )
 }
 
-function TaskRow({
+export function TaskRow({
   task,
   search,
 }: {
@@ -90,5 +90,24 @@ function TaskRow({
         </span>
       </Link>
     </li>
+  )
+}
+
+/** A plain list of task rows (dashboard, calendar). */
+export function TaskRowList({
+  tasks,
+  search,
+  label,
+}: {
+  tasks: TaskRowVM[]
+  search: URLSearchParams
+  label: string
+}) {
+  return (
+    <ul className={styles.rows} aria-label={label}>
+      {tasks.map((t) => (
+        <TaskRow key={t.id} task={t} search={search} />
+      ))}
+    </ul>
   )
 }

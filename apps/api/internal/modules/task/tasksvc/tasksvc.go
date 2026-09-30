@@ -155,9 +155,9 @@ func createTx(ctx context.Context, tx pgx.Tx, tn Caller, req mdl.CreateTaskReq) 
 	}
 	var id string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO tasks (workspace_id, title, description, status, priority, start_date, end_date, due_date, created_by, client_id, parent_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-		tn.WorkspaceID, v.Title, v.Description, v.Status, v.Priority, v.StartDate, v.EndDate, v.DueDate, tn.UserID, clientID, parentID,
+		INSERT INTO tasks (workspace_id, title, description, status, priority, start_date, end_date, due_date, created_by, client_id, parent_id, source)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+		tn.WorkspaceID, v.Title, v.Description, v.Status, v.Priority, v.StartDate, v.EndDate, v.DueDate, tn.UserID, clientID, parentID, req.Source,
 	).Scan(&id); err != nil {
 		return "", err
 	}

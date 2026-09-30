@@ -66,6 +66,13 @@ function summary(over: Partial<TaskSummary> = {}): TaskSummary {
       attachments: 0,
       pendingRequests: 0,
     },
+    source: null,
+    viewer: {
+      canManage: true,
+      canManageOwners: true,
+      isAssignee: false,
+      canRequest: false,
+    },
     ...over,
   }
 }

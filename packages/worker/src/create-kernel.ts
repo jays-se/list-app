@@ -4,7 +4,9 @@ import {
   actions as appActions,
   views as appViews,
   type DomainContext,
+  type SessionDto,
   sessionKeys,
+  sessionQuery,
   type ViewDefinition,
 } from "@app/domain"
 import type { ToMain } from "@app/protocol"
@@ -30,6 +32,8 @@ export interface CreateKernelOptions {
 export function createKernel(options: CreateKernelOptions): WorkerKernel {
   const { post } = options
   const client = new QueryClient(options.query)
+  const now = options.now ?? Date.now
+  let kernel: WorkerKernel | undefined
   const api = createApiClient({
     ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
     ...(options.fetch ? { fetch: options.fetch } : {}),
@@ -38,19 +42,37 @@ export function createKernel(options: CreateKernelOptions): WorkerKernel {
       post({ kind: "push", topic: "session.expired", data: {} })
       void client.invalidate(sessionKeys.all)
     },
+    // Removed from (or left) the workspace (E3-S6): refetch the session and
+    // reset tenant data only if the active workspace actually changed, so
+    // repeated 409s can't loop (ADR-0024).
+    onNoWorkspace: () => void checkTenant(),
   })
-  return new WorkerKernel({
+  const activeId = () =>
+    client.getQueryData<SessionDto>(sessionKeys.current)?.workspaces?.active
+      ?.id ?? null
+  async function checkTenant() {
+    const before = activeId()
+    await client.invalidate(sessionKeys.current)
+    try {
+      await client.fetchQuery(sessionQuery(api))
+    } catch {
+      return
+    }
+    if (activeId() !== before) kernel?.reset()
+  }
+  kernel = new WorkerKernel({
     views: options.views ?? appViews,
     actions: options.actions ?? appActions,
     post,
     context: {
       api,
       client,
-      now: options.now ?? Date.now,
+      now,
       upload: options.upload ?? xhrUpload,
       notify: (progress) =>
         post({ kind: "push", topic: "upload.progress", data: progress }),
       locale: options.locale ?? "en",
     },
   })
+  return kernel
 }

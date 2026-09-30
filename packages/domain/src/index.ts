@@ -1,4 +1,7 @@
+import { captureActions } from "./capture/capture.ts"
 import { clientActions, clientViews } from "./clients/clients.ts"
+import { calendarViews } from "./insights/calendar.ts"
+import { dashboardViews } from "./insights/dashboard.ts"
 import { labelActions, labelViews } from "./labels/labels.ts"
 import {
   notificationActions,
@@ -13,13 +16,18 @@ import { collabActions } from "./tasks/tasks.collab.actions.ts"
 import { historyViews } from "./tasks/tasks.history.ts"
 import { requestActions } from "./tasks/tasks.requests.actions.ts"
 import { taskViews } from "./tasks/tasks.views.ts"
+import { memberActions } from "./workspace/members.actions.ts"
 import { workspaceViews } from "./workspace/members.views.ts"
 
 export { validateClient } from "./clients/clients.ts"
 export { validateLabel } from "./labels/labels.ts"
 export { notificationKeys } from "./notifications/notifications.ts"
 export * from "./runtime.ts"
-export { sessionKeys } from "./session/session.queries.ts"
+export {
+  type SessionDto,
+  sessionKeys,
+  sessionQuery,
+} from "./session/session.queries.ts"
 export {
   validateInviteCode,
   validateWorkspaceName,
@@ -42,6 +50,8 @@ export const views = {
   ...historyViews,
   ...clientViews,
   ...notificationViews,
+  ...dashboardViews,
+  ...calendarViews,
 } satisfies ViewRegistry
 
 /** All actions, checked against `ActionMap` in @app/protocol. */
@@ -53,4 +63,6 @@ export const actions = {
   ...clientActions,
   ...requestActions,
   ...notificationActions,
+  ...captureActions,
+  ...memberActions,
 } satisfies ActionRegistry

@@ -32,6 +32,7 @@ func (h *TaskHdlr) RegisterRoutes(r *apiserver.Router) {
 	ws := h.scope.RequireWorkspace
 	r.Handle("GET /api/v1/tasks", ws(h.list))
 	r.Handle("POST /api/v1/tasks", ws(h.create))
+	r.Handle("POST /api/v1/tasks/bulk", ws(h.bulkCreate))
 	r.Handle("GET /api/v1/tasks/{taskId}", ws(h.get))
 	r.Handle("PATCH /api/v1/tasks/{taskId}", ws(h.update))
 	r.Handle("DELETE /api/v1/tasks/{taskId}", ws(h.delete))
@@ -61,7 +62,7 @@ func (h *TaskHdlr) list(w http.ResponseWriter, r *http.Request) {
 	if apperr.Respond(w, r, h.log, "task_list", err) {
 		return
 	}
-	apiserver.RespondOK(w, mdl.ListTasksRsp{Tasks: mdl.ToTaskSummaryRspList(tasks)})
+	apiserver.RespondOK(w, mdl.ListTasksRsp{Tasks: mdl.ToTaskSummaryRspList(tasks, func(t mdl.Task) mdl.Viewer { return tasksvc.ViewerOf(t, tn) })})
 }
 
 func (h *TaskHdlr) respondTask(w http.ResponseWriter, status int, t mdl.Task, v mdl.Viewer) {
@@ -132,4 +133,21 @@ func (h *TaskHdlr) replaceLabels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.respondTask(w, http.StatusOK, t, v)
+}
+
+func (h *TaskHdlr) bulkCreate(w http.ResponseWriter, r *http.Request) {
+	var req mdl.BulkCreateReq
+	if !apiserver.DecodeJSON(w, r, &req) {
+		return
+	}
+	tn := tenant(r)
+	out, err := h.svc.BulkCreate(r.Context(), tn, r.Header.Get("Idempotency-Key"), req, func(ts []mdl.Task) any {
+		return mdl.ListTasksRsp{Tasks: mdl.ToTaskSummaryRspList(ts, func(t mdl.Task) mdl.Viewer { return tasksvc.ViewerOf(t, tn) })}
+	})
+	if apperr.Respond(w, r, h.log, "task_bulk_create", err) {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(out)
 }

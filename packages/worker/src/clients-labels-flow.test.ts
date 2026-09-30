@@ -95,6 +95,13 @@ function fakeApi(role: "OWNER" | "MEMBER" = "OWNER") {
                   attachments: 0,
                   pendingRequests: 0,
                 },
+                source: null,
+                viewer: {
+                  canManage: true,
+                  canManageOwners: true,
+                  isAssignee: false,
+                  canRequest: false,
+                },
               },
             ],
           })

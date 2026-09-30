@@ -31,6 +31,9 @@ type Access struct {
 	WorkspaceRole string
 }
 
+// ViewerOf is the caller's permissions on t (for list rows).
+func ViewerOf(t mdl.Task, c Caller) mdl.Viewer { return Evaluate(accessOf(t, c), c.UserID) }
+
 func accessOf(t mdl.Task, c Caller) Access {
 	a := Access{CreatedBy: t.CreatedBy.ID, WorkspaceRole: c.Role}
 	for _, p := range t.Owners {

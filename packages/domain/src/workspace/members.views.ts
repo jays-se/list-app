@@ -10,6 +10,11 @@ export const workspaceViews = {
       session: sessionQuery(ctx.api),
     }),
     compute: ({ members, session }, _params, ctx) =>
-      toMembersVM(members, session.user?.id ?? null, ctx.locale),
+      toMembersVM(
+        members,
+        session.user?.id ?? null,
+        ctx.locale,
+        session.workspaces?.active?.role === "OWNER"
+      ),
   }),
 }

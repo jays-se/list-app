@@ -106,7 +106,9 @@ func Build(cfg config.Config, o Options) (*App, error) {
 	authSvc := authsvc.NewAuthSvc(o.Pool, provider, cfg.SessionSecret, cfg.SessionTTL, o.Now, o.Log)
 	auth := authhdlr.NewAuthHdlr(authSvc, dev, cfg.CookieSecure, o.Log)
 
-	workspaces := workspacehdlr.NewWorkspaceHdlr(workspacesvc.NewWorkspaceSvc(o.Pool, authSvc, o.Log), auth, o.Log)
+	workspaceSvc := workspacesvc.NewWorkspaceSvc(o.Pool, authSvc, o.Log)
+	workspaceSvc.SetMemberCleanup(tasksvc.RemoveMemberTx)
+	workspaces := workspacehdlr.NewWorkspaceHdlr(workspaceSvc, auth, o.Log)
 
 	blobs := o.Blobs
 	if blobs == nil {
