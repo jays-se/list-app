@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { colorTokenNames } from "./alias.ts"
+import { colorTokenNames, paletteTokenNames } from "./alias.ts"
 import { renderTokensCss } from "./css.ts"
 import { tokens } from "./index.ts"
 
@@ -16,7 +16,9 @@ describe("renderTokensCss", () => {
     ]) {
       const start = css.indexOf(selector)
       const block = css.slice(start, css.indexOf("}", start))
-      for (const name of colorTokenNames) expect(block).toContain(`--${name}:`)
+      for (const name of [...colorTokenNames, ...paletteTokenNames]) {
+        expect(block).toContain(`--${name}:`)
+      }
     }
   })
 

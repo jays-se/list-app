@@ -1,6 +1,7 @@
 import { useAction, useView } from "@app/bridge"
 import { Avatar, Badge, Button, Spinner } from "@app/ui-kit"
 import { useState } from "react"
+import { LabelsSection } from "./LabelsSection.tsx"
 import { CreateWorkspaceForm, JoinWorkspaceForm } from "./WorkspaceForms.tsx"
 import styles from "./WorkspaceSettingsPage.module.css"
 
@@ -104,6 +105,8 @@ export function WorkspaceSettingsPage() {
           </ul>
         )}
       </section>
+
+      <LabelsSection />
 
       <section className={styles.card} aria-labelledby="add-title">
         <h2 id="add-title" className={styles.cardTitle}>

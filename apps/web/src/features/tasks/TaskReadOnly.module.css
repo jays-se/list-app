@@ -1,0 +1,53 @@
+.root {
+  display: grid;
+  gap: var(--spacingL);
+}
+
+.notice {
+  margin: 0;
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorStatusInfoBackground1);
+  color: var(--colorStatusInfoForeground1);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--spacingS) var(--spacingXL);
+  margin: 0;
+}
+.facts dt {
+  color: var(--colorNeutralForeground3);
+}
+.facts dd {
+  margin: 0;
+}
+
+.chips,
+.people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacingXS) var(--spacingM);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingXS);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--fontSizeBase300);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.description {
+  margin: 0;
+  color: var(--colorNeutralForeground2);
+  white-space: pre-wrap;
+}

@@ -23,4 +23,14 @@ The source of truth is the migrations in `resources/db/migrations/`. Update this
 - `users.email` is no longer unique; it is profile data, indexed through `lower(email)`.
 - `sessions_user_created_idx` supports "reactivate the last workspace I used" when a new session starts.
 
-Feature tables (tasks, requests, docs, clients, labels, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.
+## Migration 0003: tasks and labels (Sprint 2)
+| Table | Purpose | Key columns |
+|---|---|---|
+| `labels` | Workspace labels | `name` is 1–40 characters and unique per workspace, ignoring case. `color` is one of 9 palette keys. |
+| `tasks` | Action items | `title` is 1–500 characters. `status` and `priority` are enums with CHECK constraints. `start_date` and `end_date` are required, with `end_date >= start_date`. `due_date` is optional. `version` is used for If-Match. |
+| `task_assignees`, `task_owners` | People on a task | Primary key `(task_id, user_id)` |
+| `task_labels` | Labels on a task | Primary key `(task_id, label_id)`. Rows cascade when a label is deleted. |
+
+Every table has `workspace_id` and a `<table>_tenant` RLS policy (USING and WITH CHECK). Clients (`client_id`) and subtasks (`parent_id`) are added by their own migrations in Sprint 3.
+
+Feature tables (requests, docs, clients, notifications, outbox) arrive with their feature tickets. Each adds a numbered migration and a section here.

@@ -49,6 +49,9 @@ function decNumber(v: unknown, p: string, integer: boolean): number {
   if (integer && !Number.isInteger(v)) fail(p, "integer")
   return v
 }
+function decBoolean(v: unknown, p: string): boolean {
+  return typeof v === "boolean" ? v : fail(p, "boolean")
+}
 function decEnum<const T extends readonly string[]>(
   v: unknown,
   p: string,
@@ -71,6 +74,76 @@ export function decodeActiveWorkspace(v: unknown, p = "$"): ActiveWorkspace {
     name: decString(o.name, `${p}.name`),
     role: decodeRole(o.role, `${p}.role`),
     inviteCode: decString(o.inviteCode, `${p}.inviteCode`),
+  }))
+}
+
+export interface CreateLabelRequest {
+  name: string
+  color: LabelColor
+}
+export function decodeCreateLabelRequest(
+  v: unknown,
+  p = "$"
+): CreateLabelRequest {
+  return decObject(v, p, (o) => ({
+    name: decString(o.name, `${p}.name`),
+    color: decodeLabelColor(o.color, `${p}.color`),
+  }))
+}
+
+export interface CreateTaskRequest {
+  title: string
+  description?: string | null
+  status?: TaskStatus
+  priority?: TaskPriority
+  startDate: string
+  endDate: string
+  dueDate?: string | null
+  assigneeIds?: string[]
+  labelIds?: string[]
+}
+export function decodeCreateTaskRequest(
+  v: unknown,
+  p = "$"
+): CreateTaskRequest {
+  return decObject(v, p, (o) => ({
+    title: decString(o.title, `${p}.title`),
+    ...(o.description === undefined
+      ? {}
+      : {
+          description:
+            o.description === null
+              ? null
+              : decString(o.description, `${p}.description`),
+        }),
+    ...(o.status === undefined
+      ? {}
+      : { status: decodeTaskStatus(o.status, `${p}.status`) }),
+    ...(o.priority === undefined
+      ? {}
+      : { priority: decodeTaskPriority(o.priority, `${p}.priority`) }),
+    startDate: decString(o.startDate, `${p}.startDate`),
+    endDate: decString(o.endDate, `${p}.endDate`),
+    ...(o.dueDate === undefined
+      ? {}
+      : {
+          dueDate:
+            o.dueDate === null ? null : decString(o.dueDate, `${p}.dueDate`),
+        }),
+    ...(o.assigneeIds === undefined
+      ? {}
+      : {
+          assigneeIds: decArray(o.assigneeIds, `${p}.assigneeIds`, (x, xp) =>
+            decString(x, xp)
+          ),
+        }),
+    ...(o.labelIds === undefined
+      ? {}
+      : {
+          labelIds: decArray(o.labelIds, `${p}.labelIds`, (x, xp) =>
+            decString(x, xp)
+          ),
+        }),
   }))
 }
 
@@ -128,6 +201,70 @@ export function decodeJoinWorkspaceRequest(
   }))
 }
 
+export interface Label {
+  id: string
+  name: string
+  color: LabelColor
+}
+export function decodeLabel(v: unknown, p = "$"): Label {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    name: decString(o.name, `${p}.name`),
+    color: decodeLabelColor(o.color, `${p}.color`),
+  }))
+}
+
+export type LabelColor =
+  | "gray"
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "teal"
+  | "blue"
+  | "purple"
+  | "pink"
+export function decodeLabelColor(v: unknown, p = "$"): LabelColor {
+  return decEnum(v, p, [
+    "gray",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "teal",
+    "blue",
+    "purple",
+    "pink",
+  ] as const)
+}
+
+export interface LabelIdsRequest {
+  labelIds: string[]
+}
+export function decodeLabelIdsRequest(v: unknown, p = "$"): LabelIdsRequest {
+  return decObject(v, p, (o) => ({
+    labelIds: decArray(o.labelIds, `${p}.labelIds`, (x, xp) =>
+      decString(x, xp)
+    ),
+  }))
+}
+
+export interface LabelList {
+  labels: Label[]
+}
+export function decodeLabelList(v: unknown, p = "$"): LabelList {
+  return decObject(v, p, (o) => ({
+    labels: decArray(o.labels, `${p}.labels`, (x, xp) => decodeLabel(x, xp)),
+  }))
+}
+
+export interface LabelResponse {
+  label: Label
+}
+export function decodeLabelResponse(v: unknown, p = "$"): LabelResponse {
+  return decObject(v, p, (o) => ({ label: decodeLabel(o.label, `${p}.label`) }))
+}
+
 export interface Member {
   id: string
   name: string
@@ -163,6 +300,19 @@ export interface MeResponse {
 }
 export function decodeMeResponse(v: unknown, p = "$"): MeResponse {
   return decObject(v, p, (o) => ({ user: decodeUser(o.user, `${p}.user`) }))
+}
+
+export interface PersonRef {
+  id: string
+  name: string
+  image: string | null
+}
+export function decodePersonRef(v: unknown, p = "$"): PersonRef {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    name: decString(o.name, `${p}.name`),
+    image: o.image === null ? null : decString(o.image, `${p}.image`),
+  }))
 }
 
 /** RFC 7807 problem details. */
@@ -240,6 +390,185 @@ export function decodeSystemInfo(v: unknown, p = "$"): SystemInfo {
   }))
 }
 
+export interface Task {
+  id: string
+  title: string
+  description: string | null
+  status: TaskStatus
+  priority: TaskPriority
+  startDate: string
+  endDate: string
+  dueDate: string | null
+  assignees: PersonRef[]
+  owners: PersonRef[]
+  labels: Label[]
+  createdBy: PersonRef
+  createdAt: string
+  updatedAt: string
+  version: number
+  viewer: TaskViewer
+}
+export function decodeTask(v: unknown, p = "$"): Task {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+    description:
+      o.description === null
+        ? null
+        : decString(o.description, `${p}.description`),
+    status: decodeTaskStatus(o.status, `${p}.status`),
+    priority: decodeTaskPriority(o.priority, `${p}.priority`),
+    startDate: decString(o.startDate, `${p}.startDate`),
+    endDate: decString(o.endDate, `${p}.endDate`),
+    dueDate: o.dueDate === null ? null : decString(o.dueDate, `${p}.dueDate`),
+    assignees: decArray(o.assignees, `${p}.assignees`, (x, xp) =>
+      decodePersonRef(x, xp)
+    ),
+    owners: decArray(o.owners, `${p}.owners`, (x, xp) =>
+      decodePersonRef(x, xp)
+    ),
+    labels: decArray(o.labels, `${p}.labels`, (x, xp) => decodeLabel(x, xp)),
+    createdBy: decodePersonRef(o.createdBy, `${p}.createdBy`),
+    createdAt: decString(o.createdAt, `${p}.createdAt`),
+    updatedAt: decString(o.updatedAt, `${p}.updatedAt`),
+    version: decNumber(o.version, `${p}.version`, true),
+    viewer: decodeTaskViewer(o.viewer, `${p}.viewer`),
+  }))
+}
+
+export interface TaskList {
+  tasks: TaskSummary[]
+}
+export function decodeTaskList(v: unknown, p = "$"): TaskList {
+  return decObject(v, p, (o) => ({
+    tasks: decArray(o.tasks, `${p}.tasks`, (x, xp) => decodeTaskSummary(x, xp)),
+  }))
+}
+
+export type TaskPriority = "URGENT" | "HIGH" | "MEDIUM" | "LOW" | "NONE"
+export function decodeTaskPriority(v: unknown, p = "$"): TaskPriority {
+  return decEnum(v, p, ["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"] as const)
+}
+
+export interface TaskResponse {
+  task: Task
+}
+export function decodeTaskResponse(v: unknown, p = "$"): TaskResponse {
+  return decObject(v, p, (o) => ({ task: decodeTask(o.task, `${p}.task`) }))
+}
+
+export type TaskStatus =
+  | "BACKLOG"
+  | "TODO"
+  | "IN_PROGRESS"
+  | "TESTING"
+  | "DONE"
+  | "CANCELED"
+export function decodeTaskStatus(v: unknown, p = "$"): TaskStatus {
+  return decEnum(v, p, [
+    "BACKLOG",
+    "TODO",
+    "IN_PROGRESS",
+    "TESTING",
+    "DONE",
+    "CANCELED",
+  ] as const)
+}
+
+export interface TaskSummary {
+  id: string
+  title: string
+  status: TaskStatus
+  priority: TaskPriority
+  startDate: string
+  endDate: string
+  dueDate: string | null
+  assignees: PersonRef[]
+  labels: Label[]
+  createdBy: PersonRef
+  version: number
+  updatedAt: string
+}
+export function decodeTaskSummary(v: unknown, p = "$"): TaskSummary {
+  return decObject(v, p, (o) => ({
+    id: decString(o.id, `${p}.id`),
+    title: decString(o.title, `${p}.title`),
+    status: decodeTaskStatus(o.status, `${p}.status`),
+    priority: decodeTaskPriority(o.priority, `${p}.priority`),
+    startDate: decString(o.startDate, `${p}.startDate`),
+    endDate: decString(o.endDate, `${p}.endDate`),
+    dueDate: o.dueDate === null ? null : decString(o.dueDate, `${p}.dueDate`),
+    assignees: decArray(o.assignees, `${p}.assignees`, (x, xp) =>
+      decodePersonRef(x, xp)
+    ),
+    labels: decArray(o.labels, `${p}.labels`, (x, xp) => decodeLabel(x, xp)),
+    createdBy: decodePersonRef(o.createdBy, `${p}.createdBy`),
+    version: decNumber(o.version, `${p}.version`, true),
+    updatedAt: decString(o.updatedAt, `${p}.updatedAt`),
+  }))
+}
+
+/** The caller's permissions on this task (E5-S1). */
+export interface TaskViewer {
+  canManage: boolean
+  canManageOwners: boolean
+  isAssignee: boolean
+}
+export function decodeTaskViewer(v: unknown, p = "$"): TaskViewer {
+  return decObject(v, p, (o) => ({
+    canManage: decBoolean(o.canManage, `${p}.canManage`),
+    canManageOwners: decBoolean(o.canManageOwners, `${p}.canManageOwners`),
+    isAssignee: decBoolean(o.isAssignee, `${p}.isAssignee`),
+  }))
+}
+
+/** Only the fields present are changed. */
+export interface UpdateTaskRequest {
+  title?: string
+  description?: string | null
+  status?: TaskStatus
+  priority?: TaskPriority
+  startDate?: string
+  endDate?: string
+  dueDate?: string | null
+}
+export function decodeUpdateTaskRequest(
+  v: unknown,
+  p = "$"
+): UpdateTaskRequest {
+  return decObject(v, p, (o) => ({
+    ...(o.title === undefined
+      ? {}
+      : { title: decString(o.title, `${p}.title`) }),
+    ...(o.description === undefined
+      ? {}
+      : {
+          description:
+            o.description === null
+              ? null
+              : decString(o.description, `${p}.description`),
+        }),
+    ...(o.status === undefined
+      ? {}
+      : { status: decodeTaskStatus(o.status, `${p}.status`) }),
+    ...(o.priority === undefined
+      ? {}
+      : { priority: decodeTaskPriority(o.priority, `${p}.priority`) }),
+    ...(o.startDate === undefined
+      ? {}
+      : { startDate: decString(o.startDate, `${p}.startDate`) }),
+    ...(o.endDate === undefined
+      ? {}
+      : { endDate: decString(o.endDate, `${p}.endDate`) }),
+    ...(o.dueDate === undefined
+      ? {}
+      : {
+          dueDate:
+            o.dueDate === null ? null : decString(o.dueDate, `${p}.dueDate`),
+        }),
+  }))
+}
+
 export interface User {
   id: string
   name: string
@@ -252,6 +581,15 @@ export function decodeUser(v: unknown, p = "$"): User {
     name: decString(o.name, `${p}.name`),
     email: decString(o.email, `${p}.email`),
     image: o.image === null ? null : decString(o.image, `${p}.image`),
+  }))
+}
+
+export interface UserIdsRequest {
+  userIds: string[]
+}
+export function decodeUserIdsRequest(v: unknown, p = "$"): UserIdsRequest {
+  return decObject(v, p, (o) => ({
+    userIds: decArray(o.userIds, `${p}.userIds`, (x, xp) => decString(x, xp)),
   }))
 }
 

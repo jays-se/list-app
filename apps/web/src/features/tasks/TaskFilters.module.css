@@ -1,0 +1,23 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacingS) var(--spacingL);
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusLarge);
+  background: var(--colorNeutralBackground1);
+  box-shadow: var(--shadow2);
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingS);
+  width: 220px;
+}
+
+.label {
+  flex-shrink: 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}

@@ -52,6 +52,11 @@ func newClient(t *testing.T, base string) *client {
 
 func (c *client) do(method, path string, body any, csrf bool) (*http.Response, []byte) {
 	c.t.Helper()
+	return c.doWith(method, path, body, csrf, nil)
+}
+
+func (c *client) doWith(method, path string, body any, csrf bool, headers map[string]string) (*http.Response, []byte) {
+	c.t.Helper()
 	var reader io.Reader
 	if body != nil {
 		b, _ := json.Marshal(body)
@@ -63,6 +68,9 @@ func (c *client) do(method, path string, body any, csrf bool) (*http.Response, [
 	}
 	if csrf {
 		req.Header.Set("X-Requested-With", "app")
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 	res, err := c.http.Do(req)
 	if err != nil {

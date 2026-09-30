@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/intellicars/list-app/apps/api/internal/apiserver"
+	"github.com/intellicars/list-app/apps/api/internal/apperr"
 	"github.com/intellicars/list-app/apps/api/internal/db"
 	mdl "github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacemdl"
 	"github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacesvc"
@@ -143,22 +144,7 @@ func (h *WorkspaceHdlr) rotateInvite(w http.ResponseWriter, r *http.Request) {
 
 // handleErr maps service errors to problems; it returns true if it responded.
 func (h *WorkspaceHdlr) handleErr(w http.ResponseWriter, r *http.Request, op string, err error) bool {
-	var invalid *workspacesvc.ValidationError
-	switch {
-	case err == nil:
-		return false
-	case errors.As(err, &invalid):
-		apiserver.RespondValidation(w, r, invalid.Fields)
-	case errors.Is(err, workspacesvc.ErrInviteNotFound):
-		apiserver.RespondNotFound(w, r, "That invite code isn't valid.")
-	case errors.Is(err, workspacesvc.ErrNotMember):
-		apiserver.RespondNotFound(w, r, "Workspace not found.")
-	case errors.Is(err, workspacesvc.ErrNotOwner):
-		apiserver.RespondForbidden(w, r, "forbidden", "Only workspace owners can do this.")
-	default:
-		h.internal(w, r, op, err)
-	}
-	return true
+	return apperr.Respond(w, r, h.log, "workspace_"+op, err)
 }
 
 func (h *WorkspaceHdlr) internal(w http.ResponseWriter, r *http.Request, op string, err error) {
