@@ -3,6 +3,8 @@ import { AppError, type ProblemDetails } from "./app-error.ts"
 export interface RequestOptions {
   signal?: AbortSignal
   headers?: Record<string, string>
+  /** A 401 here is expected (the session probe); don't raise session.expired. */
+  skipAuthRedirect?: boolean
 }
 
 export interface ApiClient {
@@ -48,7 +50,9 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     if (opts.signal) init.signal = opts.signal
 
     const response = await doFetch(`${baseUrl}${path}`, init)
-    if (response.status === 401) options.onUnauthorized?.()
+    if (response.status === 401 && !opts.skipAuthRedirect) {
+      options.onUnauthorized?.()
+    }
     if (!response.ok)
       throw new AppError(response.status, await problem(response))
     if (response.status === 204) return undefined as T

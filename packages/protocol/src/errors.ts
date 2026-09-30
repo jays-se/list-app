@@ -4,10 +4,12 @@
  * - FAILED: the action threw a non-HTTP error.
  * - TIMEOUT: no RPC reply within the deadline.
  * - WORKER_FAILED: the worker crashed or the bridge was stopped.
+ * - VALIDATION: the worker rejected action input before calling the API (ADR-0019).
  * - HTTP_<status>: the API answered with an error status.
  */
 export type ErrorCode =
   | "BAD_REQUEST"
+  | "VALIDATION"
   | "FAILED"
   | "TIMEOUT"
   | "WORKER_FAILED"

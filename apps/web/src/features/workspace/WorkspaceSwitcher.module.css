@@ -1,0 +1,12 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingS);
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.error {
+  color: var(--colorStatusDangerForeground1);
+  font-size: var(--fontSizeBase200);
+}

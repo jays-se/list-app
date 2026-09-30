@@ -10,6 +10,7 @@ pnpm exec biome check --staged --no-errors-on-unmatched
 node scripts/sync-agents.mjs --check
 node scripts/check-boundaries.mjs
 node packages/ui-kit/scripts/build-tokens.ts --check
+node scripts/gen-api.mjs --check
 go_files=$(git diff --cached --name-only --diff-filter=ACM -- 'apps/api/*.go' 'apps/api/**/*.go')
 if [ -n "$go_files" ]; then
   unformatted=$(cd apps/api && gofmt -l .)

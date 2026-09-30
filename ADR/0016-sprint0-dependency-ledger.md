@@ -18,6 +18,7 @@ ADR-0012 limits frontend runtime dependencies to `react`, `react-dom` and `react
 | `@vitest/coverage-v8` | Enforces the ≥80% coverage gate. |
 | `@testing-library/dom` | Peer dependency of `@testing-library/react`. |
 | `@types/*` | Type definitions only. |
+| `yaml` | Parses `api/openapi.yaml` for the in-house generator (ADR-0018, Sprint 1). |
 
 **Backend (Go):**
 
@@ -25,6 +26,8 @@ ADR-0012 limits frontend runtime dependencies to `react`, `react-dom` and `react
 |---|---|---|
 | `github.com/jackc/pgx/v5` | runtime | PostgreSQL driver and pool. Required by the Go rule (`.agents/rules/backend-go.md` §10). |
 | `gopkg.in/yaml.v3` | test only | Reads `api/openapi.yaml` in the route↔contract test. |
+| `github.com/coreos/go-oidc/v3` | runtime | OIDC discovery, JWKS and ID-token verification (ADR-0017, Sprint 1). |
+| `golang.org/x/oauth2` | runtime | Authorization-code exchange with PKCE (ADR-0017, Sprint 1). |
 
 We decided **not** to add these; the in-house version is used instead:
 

@@ -1,6 +1,15 @@
 .page {
   display: grid;
   gap: var(--spacingXXXL);
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: var(--spacingL) var(--spacingL) var(--spacingXXXL);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .title {

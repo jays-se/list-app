@@ -7,7 +7,8 @@
 .header {
   display: flex;
   align-items: center;
-  gap: var(--spacingXL);
+  flex-wrap: wrap;
+  gap: var(--spacingM) var(--spacingL);
   min-height: 48px;
   padding: 0 var(--spacingL);
   border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
@@ -40,6 +41,26 @@
 .active {
   color: var(--colorBrandForeground1);
   font-weight: var(--fontWeightSemibold);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingS);
+}
+
+.userName {
+  max-width: 16ch;
+  overflow: hidden;
+  color: var(--colorNeutralForeground2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .userName {
+    display: none;
+  }
 }
 
 .banner {

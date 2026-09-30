@@ -14,8 +14,12 @@ export {
   type ButtonProps,
   type ButtonShape,
   type ButtonSize,
+  type ButtonStyleOptions,
+  buttonClass,
   IconButton,
   type IconButtonProps,
+  LinkButton,
+  type LinkButtonProps,
 } from "./components/Button/Button.tsx"
 export {
   Checkbox,
@@ -33,6 +37,7 @@ export {
   Textarea,
   type TextareaProps,
 } from "./components/Input/Input.tsx"
+export { Select, type SelectProps } from "./components/Select/Select.tsx"
 export { Spinner, type SpinnerProps } from "./components/Spinner/Spinner.tsx"
 export { cx } from "./cx.ts"
 export * from "./icons/index.tsx"

@@ -83,3 +83,17 @@ describe("createApiClient", () => {
     expect(onUnauthorized).toHaveBeenCalledOnce()
   })
 })
+
+describe("skipAuthRedirect", () => {
+  it("does not report an expected 401", async () => {
+    const onUnauthorized = vi.fn()
+    const api = createApiClient({
+      fetch: fakeFetch(Response.json({}, { status: 401 })),
+      onUnauthorized,
+    })
+    await expect(
+      api.get("/auth/me", { skipAuthRedirect: true })
+    ).rejects.toBeInstanceOf(AppError)
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+})

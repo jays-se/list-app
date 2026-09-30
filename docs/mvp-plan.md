@@ -606,6 +606,10 @@ Web Push, SSE live updates, rich-text docs, task embeds in docs, search, paginat
   | 0013 | Cloud-agnostic, single-host deployment (no cloud provider yet) |
   | 0014 | In-house design system modelled on Fluent 2 |
   | 0015 | Agent-independent rules and skills in `.agents/` |
+  | 0016 | Sprint 0 dependency ledger |
+  | 0017 | OIDC via go-oidc, plus a built-in dev identity provider |
+  | 0018 | In-house OpenAPI → TS types and decoders |
+  | 0019 | Protocol additions: VALIDATION, `resetData`, `skipAuthRedirect` |
 - `docs/`:
   - `architecture.md`, with diagrams from §3 and §6
   - `conventions.md`: naming, files, error handling, VM naming `*.vm.ts`

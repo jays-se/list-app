@@ -3,6 +3,7 @@ import {
   type ActionDefinition,
   actions as appActions,
   views as appViews,
+  sessionKeys,
   type ViewDefinition,
 } from "@app/domain"
 import type { ToMain } from "@app/protocol"
@@ -24,13 +25,16 @@ export interface CreateKernelOptions {
 /** Wires API client + query engine + domain registries into a kernel. */
 export function createKernel(options: CreateKernelOptions): WorkerKernel {
   const { post } = options
+  const client = new QueryClient(options.query)
   const api = createApiClient({
     ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
     ...(options.fetch ? { fetch: options.fetch } : {}),
-    onUnauthorized: () =>
-      post({ kind: "push", topic: "session.expired", data: {} }),
+    // The session view refetches and turns "anonymous"; route guards react.
+    onUnauthorized: () => {
+      post({ kind: "push", topic: "session.expired", data: {} })
+      void client.invalidate(sessionKeys.all)
+    },
   })
-  const client = new QueryClient(options.query)
   return new WorkerKernel({
     views: options.views ?? appViews,
     actions: options.actions ?? appActions,

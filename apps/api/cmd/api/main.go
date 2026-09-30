@@ -17,15 +17,12 @@ import (
 	"time"
 
 	"github.com/intellicars/list-app/apps/api/internal/apiserver"
+	"github.com/intellicars/list-app/apps/api/internal/app"
 	"github.com/intellicars/list-app/apps/api/internal/config"
 	"github.com/intellicars/list-app/apps/api/internal/db"
-	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemhdlr"
-	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemsvc"
 	"github.com/intellicars/list-app/apps/api/pkg/logger"
 	dbresources "github.com/intellicars/list-app/apps/api/resources/db"
 )
-
-const serviceName = "list-api"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -39,7 +36,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	log := logger.New(os.Stdout, cfg.LogLevel).With("service", serviceName, "env", cfg.Env)
+	log := logger.New(os.Stdout, cfg.LogLevel).With("service", app.ServiceName, "env", cfg.Env)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -51,20 +48,19 @@ func run(args []string) error {
 }
 
 func serve(ctx context.Context, log *slog.Logger, cfg config.Config) error {
-	var pinger systemsvc.Pinger // stays a nil interface without a database
+	opts := app.Options{Log: log, StartedAt: time.Now()}
 	if cfg.DatabaseURL != "" {
 		pool, err := db.Open(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return err
 		}
 		defer pool.Close()
-		pinger = pool
+		opts.Pool = pool
 	} else {
-		log.Warn("database_not_configured", "hint", "set DATABASE_URL; /readyz reports not_ready")
+		log.Warn("database_not_configured", "hint", "set DATABASE_URL; /readyz reports not_ready and auth/workspace routes fail")
 	}
-
-	system := systemhdlr.NewSystemHdlr(systemsvc.NewSystemSvc(serviceName, cfg.Version, time.Now(), pinger))
-	handler, _ := apiserver.NewHandler(log, system)
+	log.Info("auth_configured", "provider", cfg.AuthProvider, "public_base_url", cfg.PublicBaseURL)
+	handler, _ := app.New(cfg, opts)
 	return apiserver.Serve(ctx, log, cfg.HTTPAddr, handler, cfg.ShutdownTimeout)
 }
 
