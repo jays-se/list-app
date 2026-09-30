@@ -16,12 +16,11 @@ This is a team tool for tasks, change-request approvals, docs, clients, labels, 
 
 ## Status
 
-Sprint 1 is complete (2026-09-30).
-- **Sign-in:** Google OIDC, or the dev identity provider, with server sessions.
-- **Workspaces:** create, join by invite code, switch, members, rotate the invite code.
-- **Plumbing:** codegen from OpenAPI, and a local compose stack.
+Sprint 2 is complete (2026-09-30).
+- **Sprints 0–1 foundations:** sign-in and workspaces.
+- **Tasks:** list, filters, create, edit, owners, labels, the permission policy, and optimistic concurrency.
 
-Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 2 (tasks).
+Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 3 (subtasks, checklist, comments, attachments, history, clients).
 
 ## Architecture in one screen
 

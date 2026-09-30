@@ -52,10 +52,74 @@ export const colorTokenNames = [
   "colorStatusInfoBackground3",
 ] as const
 
-export type ColorTokenName = (typeof colorTokenNames)[number]
+export const paletteKeys = [
+  "gray",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "teal",
+  "blue",
+  "purple",
+  "pink",
+] as const
+export type PaletteKey = (typeof paletteKeys)[number]
+type PaletteRole = "Background2" | "Foreground2" | "BorderActive"
+export type PaletteTokenName =
+  `colorPalette${Capitalize<PaletteKey>}${PaletteRole}`
+
+const cap = <K extends PaletteKey>(k: K) =>
+  (k[0]?.toUpperCase() + k.slice(1)) as Capitalize<K>
+export const paletteTokenNames: PaletteTokenName[] = paletteKeys.flatMap((k) =>
+  (["Background2", "Foreground2", "BorderActive"] as const).map(
+    (role) => `colorPalette${cap(k)}${role}` as PaletteTokenName
+  )
+)
+
+export type ColorTokenName = (typeof colorTokenNames)[number] | PaletteTokenName
 export type ColorTheme = Record<ColorTokenName, string>
 
+/** Label palette: [tint background, text, swatch/border] per key (ADR-0014). */
+type Triple = readonly [bg: string, fg: string, border: string]
+const lightPalette: Record<PaletteKey, Triple> = {
+  gray: ["#f0f0f0", "#424242", "#707070"],
+  red: ["#fdecec", "#a4262c", "#d13438"],
+  orange: ["#fdf1e7", "#8a3707", "#da3b01"],
+  yellow: ["#fef7d8", "#6d5700", "#c19c00"],
+  green: ["#e7f4e4", "#0e5c1c", "#107c10"],
+  teal: ["#e3f5f4", "#00555a", "#038387"],
+  blue: ["#e5f0fb", "#0b4a8a", "#0f6cbd"],
+  purple: ["#f1eafa", "#5a2690", "#8764b8"],
+  pink: ["#fbe9f4", "#8b1c5c", "#c239b3"],
+}
+const darkPalette: Record<PaletteKey, Triple> = {
+  gray: ["#333333", "#d6d6d6", "#9e9e9e"],
+  red: ["#3d1a1c", "#f1a9ab", "#e37d80"],
+  orange: ["#3d2414", "#f7b98f", "#f4a266"],
+  yellow: ["#3a3212", "#f2d97a", "#e9c46a"],
+  green: ["#16311b", "#9fd89f", "#54b054"],
+  teal: ["#0f3133", "#8fd6d9", "#4bb4b7"],
+  blue: ["#142c47", "#a4c8f0", "#5ea2e8"],
+  purple: ["#2c2140", "#cbb6ee", "#a585d8"],
+  pink: ["#3a1a31", "#eeaad9", "#e07bc6"],
+}
+
+function palette(
+  p: Record<PaletteKey, Triple> | "hc"
+): Record<PaletteTokenName, string> {
+  const out = {} as Record<PaletteTokenName, string>
+  for (const k of paletteKeys) {
+    const [bg, fg, border] =
+      p === "hc" ? ["Canvas", "CanvasText", "CanvasText"] : p[k]
+    out[`colorPalette${cap(k)}Background2`] = bg
+    out[`colorPalette${cap(k)}Foreground2`] = fg
+    out[`colorPalette${cap(k)}BorderActive`] = border
+  }
+  return out
+}
+
 export const lightColors: ColorTheme = {
+  ...palette(lightPalette),
   colorNeutralForeground1: grey(14),
   colorNeutralForeground2: grey(26),
   colorNeutralForeground3: grey(38),
@@ -104,6 +168,7 @@ export const lightColors: ColorTheme = {
 }
 
 export const darkColors: ColorTheme = {
+  ...palette(darkPalette),
   colorNeutralForeground1: "#ffffff",
   colorNeutralForeground2: grey(84),
   colorNeutralForeground3: grey(68),
@@ -153,6 +218,7 @@ export const darkColors: ColorTheme = {
 
 /** High contrast maps roles to CSS system colours (forced-colors friendly). */
 export const highContrastColors: ColorTheme = {
+  ...palette("hc"),
   colorNeutralForeground1: "CanvasText",
   colorNeutralForeground2: "CanvasText",
   colorNeutralForeground3: "CanvasText",

@@ -17,21 +17,16 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/intellicars/list-app/apps/api/internal/apiserver"
+	"github.com/intellicars/list-app/apps/api/internal/apperr"
 	"github.com/intellicars/list-app/apps/api/internal/db"
 	mdl "github.com/intellicars/list-app/apps/api/internal/modules/workspace/workspacemdl"
 )
 
 var (
-	ErrInviteNotFound = errors.New("workspacesvc: invite code not found")
-	ErrNotMember      = errors.New("workspacesvc: not a member")
-	ErrNotOwner       = errors.New("workspacesvc: owner role required")
+	ErrInviteNotFound = &apperr.NotFound{Detail: "That invite code isn't valid."}
+	ErrNotMember      = &apperr.NotFound{Detail: "Workspace not found."}
+	ErrNotOwner       = &apperr.Forbidden{Detail: "Only workspace owners can do this."}
 )
-
-// ValidationError carries field errors for a 422 response.
-type ValidationError struct{ Fields []apiserver.FieldError }
-
-func (e *ValidationError) Error() string { return "workspacesvc: validation failed" }
 
 // ActiveSetter updates the session's active workspace (implemented by authsvc).
 type ActiveSetter interface {
@@ -60,9 +55,9 @@ func ValidateName(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	switch n := utf8.RuneCountInString(name); {
 	case n == 0:
-		return "", &ValidationError{Fields: []apiserver.FieldError{{Field: "name", Message: "Workspace name is required"}}}
+		return "", apperr.Field("name", "Workspace name is required")
 	case n > 100:
-		return "", &ValidationError{Fields: []apiserver.FieldError{{Field: "name", Message: "Workspace name must be 100 characters or fewer"}}}
+		return "", apperr.Field("name", "Workspace name must be 100 characters or fewer")
 	}
 	return name, nil
 }
@@ -165,7 +160,7 @@ func (s *WorkspaceSvc) createTx(ctx context.Context, userID string, w *mdl.Works
 func (s *WorkspaceSvc) Join(ctx context.Context, userID string, sessionHash []byte, code string) (mdl.Workspace, error) {
 	code = strings.ToLower(strings.TrimSpace(code))
 	if code == "" {
-		return mdl.Workspace{}, &ValidationError{Fields: []apiserver.FieldError{{Field: "inviteCode", Message: "Invite code is required"}}}
+		return mdl.Workspace{}, apperr.Field("inviteCode", "Invite code is required")
 	}
 	var w mdl.Workspace
 	err := s.pool.QueryRow(ctx, `SELECT id, name, invite_code FROM workspaces WHERE invite_code = $1`, code).

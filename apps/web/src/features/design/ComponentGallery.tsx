@@ -6,14 +6,18 @@ import {
   Button,
   type ButtonAppearance,
   Checkbox,
+  ConfirmDialog,
   DismissIcon,
+  Drawer,
   Field,
   IconButton,
   Input,
+  LabelChip,
+  paletteKeys,
   Spinner,
   Textarea,
 } from "@app/ui-kit"
-import type { ReactNode } from "react"
+import { type ReactNode, useState } from "react"
 import styles from "./DesignGallery.module.css"
 
 const APPEARANCES: ButtonAppearance[] = [
@@ -32,6 +36,8 @@ const BADGE_COLORS: BadgeColor[] = [
 ]
 
 export function ComponentGallery() {
+  const [drawer, setDrawer] = useState(false) // gallery demo state
+  const [dialog, setDialog] = useState(false)
   return (
     <section className={styles.section} aria-labelledby="components">
       <h2 id="components" className={styles.heading}>
@@ -105,6 +111,47 @@ export function ComponentGallery() {
             ))}
           </div>
         ))}
+      </Specimen>
+
+      <Specimen title="LabelChip">
+        <div className={styles.row}>
+          {paletteKeys.map((k) => (
+            <LabelChip key={k} color={k}>
+              {k}
+            </LabelChip>
+          ))}
+        </div>
+      </Specimen>
+
+      <Specimen title="Drawer · ConfirmDialog">
+        <div className={styles.row}>
+          <Button onClick={() => setDrawer(true)}>Open drawer</Button>
+          <Button onClick={() => setDialog(true)}>Open confirm dialog</Button>
+        </div>
+        <Drawer
+          open={drawer}
+          title="Drawer title"
+          subtitle="Subtitle"
+          onRequestClose={() => setDrawer(false)}
+          footer={
+            <Button appearance="primary" onClick={() => setDrawer(false)}>
+              Done
+            </Button>
+          }
+        >
+          <Field label="Example field">
+            <Input />
+          </Field>
+        </Drawer>
+        <ConfirmDialog
+          open={dialog}
+          title="Delete this task?"
+          confirmLabel="Delete"
+          onConfirm={() => setDialog(false)}
+          onCancel={() => setDialog(false)}
+        >
+          This can't be undone.
+        </ConfirmDialog>
       </Specimen>
 
       <Specimen title="Avatar · Spinner">

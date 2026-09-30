@@ -1,0 +1,84 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingXS);
+  max-width: 16ch;
+  overflow: hidden;
+  border-radius: var(--borderRadiusCircular);
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  font-weight: var(--fontWeightSemibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.small {
+  padding: 0 var(--spacingSNudge);
+  font-size: var(--fontSizeBase100);
+  line-height: var(--lineHeightBase200);
+}
+.medium {
+  padding: var(--spacingXXS) var(--spacingS);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: var(--borderRadiusCircular);
+  background: var(--chip-border);
+}
+
+@media (forced-colors: active) {
+  .root {
+    border: 1px solid CanvasText;
+  }
+}
+
+.gray {
+  --chip-bg: var(--colorPaletteGrayBackground2);
+  --chip-fg: var(--colorPaletteGrayForeground2);
+  --chip-border: var(--colorPaletteGrayBorderActive);
+}
+.red {
+  --chip-bg: var(--colorPaletteRedBackground2);
+  --chip-fg: var(--colorPaletteRedForeground2);
+  --chip-border: var(--colorPaletteRedBorderActive);
+}
+.orange {
+  --chip-bg: var(--colorPaletteOrangeBackground2);
+  --chip-fg: var(--colorPaletteOrangeForeground2);
+  --chip-border: var(--colorPaletteOrangeBorderActive);
+}
+.yellow {
+  --chip-bg: var(--colorPaletteYellowBackground2);
+  --chip-fg: var(--colorPaletteYellowForeground2);
+  --chip-border: var(--colorPaletteYellowBorderActive);
+}
+.green {
+  --chip-bg: var(--colorPaletteGreenBackground2);
+  --chip-fg: var(--colorPaletteGreenForeground2);
+  --chip-border: var(--colorPaletteGreenBorderActive);
+}
+.teal {
+  --chip-bg: var(--colorPaletteTealBackground2);
+  --chip-fg: var(--colorPaletteTealForeground2);
+  --chip-border: var(--colorPaletteTealBorderActive);
+}
+.blue {
+  --chip-bg: var(--colorPaletteBlueBackground2);
+  --chip-fg: var(--colorPaletteBlueForeground2);
+  --chip-border: var(--colorPaletteBlueBorderActive);
+}
+.purple {
+  --chip-bg: var(--colorPalettePurpleBackground2);
+  --chip-fg: var(--colorPalettePurpleForeground2);
+  --chip-border: var(--colorPalettePurpleBorderActive);
+}
+.pink {
+  --chip-bg: var(--colorPalettePinkBackground2);
+  --chip-fg: var(--colorPalettePinkForeground2);
+  --chip-border: var(--colorPalettePinkBorderActive);
+}

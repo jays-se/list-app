@@ -152,3 +152,59 @@ describe("Select", () => {
     expect(onChange).toHaveBeenCalledOnce()
   })
 })
+
+describe("Drawer and ConfirmDialog", () => {
+  it("drawer is a labelled modal dialog; Esc and close only request closing", async () => {
+    const { Drawer } = await import("./Drawer/Drawer.tsx")
+    const onRequestClose = vi.fn()
+    const { rerender } = render(
+      <Drawer open title="Task" onRequestClose={onRequestClose}>
+        <input aria-label="Title" />
+      </Drawer>
+    )
+    const dialog = screen.getByRole("dialog", { name: "Task" })
+    expect(dialog.hasAttribute("open")).toBe(true)
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Close")
+    fireEvent.keyDown(dialog, { key: "Escape" })
+    fireEvent.click(screen.getByRole("button", { name: "Close" }))
+    expect(onRequestClose).toHaveBeenCalledTimes(2)
+    rerender(
+      <Drawer open={false} title="Task" onRequestClose={onRequestClose}>
+        <input aria-label="Title" />
+      </Drawer>
+    )
+    expect(screen.queryByRole("textbox")).toBeNull()
+  })
+
+  it("confirm dialog focuses cancel and reports the choice", async () => {
+    const { ConfirmDialog } = await import("./Dialog/Dialog.tsx")
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    render(
+      <ConfirmDialog
+        open
+        title="Delete this task?"
+        confirmLabel="Delete"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      >
+        This can't be undone.
+      </ConfirmDialog>
+    )
+    const dialog = screen.getByRole("alertdialog", {
+      name: "Delete this task?",
+    })
+    expect(dialog.getAttribute("aria-describedby")).toBeTruthy()
+    expect(document.activeElement?.textContent).toBe("Cancel")
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+    fireEvent.keyDown(dialog, { key: "Escape" })
+    expect(onConfirm).toHaveBeenCalledOnce()
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+
+  it("label chip renders its text", async () => {
+    const { LabelChip } = await import("./LabelChip/LabelChip.tsx")
+    render(<LabelChip color="teal">Design</LabelChip>)
+    expect(screen.getByText("Design")).toBeTruthy()
+  })
+})

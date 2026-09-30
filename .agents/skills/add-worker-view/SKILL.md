@@ -39,6 +39,10 @@ Reference implementation: `system.info`.
    - Read it with `const vm = useView("<feature>.<name>", params)`.
    - Render the `loading` state with `Spinner`, and `error` with `vm.error.message`. `vm.data` can exist together with `vm.error` when a background refetch fails.
    - Filter and sort intent comes from URL search params and is passed as `params`.
+     - Use `useView(key, params, { keepPrevious: true })` so the list doesn't flash while new params load.
+     - **Filter controls must be uncontrolled** (`defaultValue`/`defaultChecked` from the URL, with `key={search.toString()}` on their container). A router navigation commits a tick after the click, and a controlled input would flicker back.
+     - Reference: `apps/web/src/features/tasks/TaskFilters.tsx`.
+   - For data that other people change without our actions (members, labels), use `ttl: 0`. Views then show the cached data and revalidate whenever a new subscription opens.
    - Optionally, the route `loader` calls `bridge.prefetch(key, params)` and returns `null`.
 8. **Tests:**
    - Domain: a unit test of the pure view-model function (`<feature>.test.ts`), with no mocks.

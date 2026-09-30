@@ -2,6 +2,7 @@ import type { Bridge } from "@app/bridge"
 import { createBrowserRouter, type RouteObject } from "react-router"
 import { LoginPage } from "../features/auth/LoginPage.tsx"
 import { HomePage } from "../features/system/HomePage.tsx"
+import { listParams, TasksPage } from "../features/tasks/TasksPage.tsx"
 import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
 import { WorkspaceSettingsPage } from "../features/workspace/WorkspaceSettingsPage.tsx"
 import { AppShell } from "./AppShell.tsx"
@@ -38,6 +39,17 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
               element: <HomePage />,
               loader: () => {
                 bridge.prefetch("system.info", {})
+                return null
+              },
+            },
+            {
+              path: "/tasks",
+              element: <TasksPage />,
+              loader: ({ request }) => {
+                const search = new URL(request.url).searchParams
+                bridge.prefetch("tasks.list", listParams(search))
+                const taskId = search.get("task")
+                if (taskId) bridge.prefetch("tasks.detail", { taskId })
                 return null
               },
             },

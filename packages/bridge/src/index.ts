@@ -8,6 +8,7 @@ export {
 export {
   type ActionState,
   BridgeProvider,
+  type UseViewOptions,
   useAction,
   useBridge,
   useBridgeStatus,

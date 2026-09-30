@@ -27,14 +27,17 @@ This is contract-first (ADR-0002). Reference implementations:
 4. **Service** in `<m>svc/`:
    - Workspace-scoped SQL runs only inside `db.WithTenant`. Use `db.WithUser` for cross-workspace reads by one user, and `db.SetTenant` when the workspace id is created mid-transaction.
    - Validation lives here and returns a `*ValidationError{Fields}`. It must mirror the web validators in `packages/domain/**/<feature>.validators.ts`.
-   - Domain errors are sentinel values (`ErrNotMember`, …). Wrap other errors with `fmt.Errorf("<m>svc: op: %w", err)`.
+   - Return domain errors as `internal/apperr` kinds: `apperr.Field` or `Validation` (422), `NotFound` (404), `Forbidden` (403), `Conflict` (409), `Precondition` (428). Each carries a user-safe message. Wrap other errors with `fmt.Errorf("<m>svc: op: %w", err)`.
+   - Validate path and body ids with `uuidx.Valid` before any SQL, so a malformed id becomes 404 or 422 rather than a cast error.
+   - Put permissions in one policy function, like `tasksvc.Evaluate`, used for both the response flags and enforcement, and give it a table-driven test (ADR-0020).
+   - Use `apiserver.Optional[T]` for PATCH bodies: absent, null and a value are three different things.
    - Log successful writes with `workspace_id` and `user_id`.
 5. **Handler** in `<m>hdlr/`:
    - `RegisterRoutes(r *apiserver.Router)` uses `r.Handle("METHOD /path", mw(h.fn))`.
      - `auth.RequireUser` is for signed-in routes.
      - `workspaces.RequireWorkspace` is for routes scoped to the active workspace. It puts a `reqctx.Tenant` (including `Role`) into the context.
    - Decode request bodies with `apiserver.DecodeJSON`.
-   - Map errors in one `handleErr`, which writes a problem response:
+   - Map errors with `apperr.Respond(w, r, log, op, err)`, which writes the problem response:
 
      | Error | Response |
      |---|---|

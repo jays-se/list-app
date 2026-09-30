@@ -1,0 +1,27 @@
+.spacer {
+  flex: 1;
+}
+
+.alert {
+  margin: 0 0 var(--spacingL);
+  color: var(--colorStatusDangerForeground1);
+}
+
+.conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacingS);
+  margin-bottom: var(--spacingL);
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorStatusWarningBackground1);
+  color: var(--colorStatusWarningForeground1);
+}
+
+.meta {
+  margin: var(--spacingXL) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}

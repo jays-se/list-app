@@ -40,10 +40,19 @@ export function useBridge(): Bridge {
   return bridge
 }
 
+export interface UseViewOptions {
+  /**
+   * While new params are loading, keep returning the previous result (with
+   * isFetching true) instead of a loading state — e.g. when filters change.
+   */
+  keepPrevious?: boolean
+}
+
 /** Subscribes to a worker view model. The only way React reads data. */
 export function useView<K extends ViewKey>(
   view: K,
-  params: ViewParams<K>
+  params: ViewParams<K>,
+  options: UseViewOptions = {}
 ): ViewState<ViewData<K>> {
   const bridge = useBridge()
   const paramsHash = stableHash(params)
@@ -54,11 +63,17 @@ export function useView<K extends ViewKey>(
     () => bridge.view(view, paramsRef.current),
     [bridge, view, paramsHash]
   )
-  return useSyncExternalStore(
+  const state = useSyncExternalStore(
     handle.subscribe,
     handle.getSnapshot,
     handle.getSnapshot
   )
+  const previous = useRef<ViewState<ViewData<K>> | undefined>(undefined)
+  if (state.data !== undefined) previous.current = state
+  if (options.keepPrevious && state.status === "loading" && previous.current) {
+    return { ...previous.current, isFetching: true }
+  }
+  return state
 }
 
 export interface ActionState<K extends ActionKey> {
