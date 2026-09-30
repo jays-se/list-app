@@ -1,5 +1,6 @@
 import { type Browser, expect, test } from "@playwright/test"
 import {
+  choose,
   collectErrors,
   createWorkspace,
   expectNoAxeViolations,
@@ -26,7 +27,7 @@ test("quick capture → dashboard → calendar", async ({ browser }) => {
   await page
     .getByRole("textbox", { name: "Notes" })
     .fill("- Call the vendor\n\n2) Send the deck\n• Book a room")
-  await page.getByRole("combobox", { name: "Source" }).selectOption("PERSONAL")
+  await choose(page, "Source", "Personal")
   await page.getByRole("button", { name: "Preview tasks" }).click()
   await expect(page.getByText("3 tasks · 1 empty line skipped")).toBeVisible()
   await page.getByRole("textbox", { name: "Task 3" }).fill("Book the big room")
@@ -36,7 +37,7 @@ test("quick capture → dashboard → calendar", async ({ browser }) => {
   await expect(page.getByRole("status")).toContainText("Created 2 tasks.")
 
   // Personal tasks are assigned to me → the dashboard counts them.
-  await page.getByRole("link", { name: "Dashboard" }).click()
+  await page.getByRole("link", { name: "Home" }).click()
   const summary = page.getByRole("list", { name: "Summary" })
   await expect(
     summary.getByRole("link", { name: /My open tasks/ })
@@ -94,9 +95,7 @@ test("owner promotes, removes; member leaves; last owner is protected", async ({
   ).toBeVisible()
 
   // Promote Mia; remove Ned (then offered a new invite code).
-  await o
-    .getByRole("combobox", { name: `Role for ${mia.who.name}` })
-    .selectOption("OWNER")
+  await choose(o, `Role for ${mia.who.name}`, "Owner")
   await o.getByRole("button", { name: `Remove ${ned.who.name}` }).click()
   await o
     .getByRole("alertdialog", { name: `Remove ${ned.who.name} from Crew?` })

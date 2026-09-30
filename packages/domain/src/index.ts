@@ -10,6 +10,7 @@ import {
   notificationViews,
 } from "./notifications/notifications.ts"
 import type { ActionRegistry, ViewRegistry } from "./runtime.ts"
+import { searchViews } from "./search/search.ts"
 import { sessionActions } from "./session/session.actions.ts"
 import { sessionViews } from "./session/session.views.ts"
 import { systemViews } from "./system/system.views.ts"
@@ -55,6 +56,7 @@ export const views = {
   ...dashboardViews,
   ...calendarViews,
   ...docViews,
+  ...searchViews,
 } satisfies ViewRegistry
 
 /** All actions, checked against `ActionMap` in @app/protocol. */

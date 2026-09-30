@@ -3,15 +3,16 @@ import {
   Button,
   ConfirmDialog,
   DismissIcon,
+  Dropdown,
   Field,
   IconButton,
   Input,
-  Select,
   Spinner,
   Textarea,
 } from "@app/ui-kit"
 import { useEffect, useId, useRef, useState } from "react"
 import { Link, useBlocker, useNavigate, useParams } from "react-router"
+import { swatchOptions } from "../tasks/pickers.tsx"
 import styles from "./Docs.module.css"
 import { Markdown } from "./Markdown.tsx"
 
@@ -116,16 +117,11 @@ export function DocPage() {
           />
         </Field>
         <Field label="Client">
-          <Select
+          <Dropdown
             value={vm.clientId}
-            onChange={(e) => send({ clientId: e.target.value })}
-          >
-            {vm.clientOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+            options={swatchOptions(vm.clientOptions)}
+            onChange={(clientId) => send({ clientId })}
+          />
         </Field>
       </div>
 

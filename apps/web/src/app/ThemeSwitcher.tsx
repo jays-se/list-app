@@ -1,46 +1,50 @@
 import {
   applyTheme,
+  Dropdown,
   loadTheme,
-  Select,
+  MoonIcon,
+  SunIcon,
   saveTheme,
   type ThemeName,
 } from "@app/ui-kit"
-import { useId, useState } from "react"
+import { useState } from "react"
 import styles from "./ThemeSwitcher.module.css"
 
-const OPTIONS: { value: ThemeName; label: string }[] = [
+export const THEME_OPTIONS: { value: ThemeName; label: string }[] = [
   { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
   { value: "hc", label: "High contrast" },
 ]
 
-/** UI preference only (not server data), so local state is fine here. */
+/**
+ * For pages outside the shell (sign-in, onboarding); inside it the theme
+ * is in the account menu. A UI preference, so local state is fine.
+ */
 export function ThemeSwitcher() {
-  const id = useId()
   const [theme, setTheme] = useState<ThemeName>(loadTheme)
   return (
     <span className={styles.root}>
-      <label htmlFor={id} className={styles.label}>
-        Theme
-      </label>
-      <Select
-        id={id}
+      <Dropdown
+        aria-label="Theme"
         size="small"
+        appearance="subtle"
         value={theme}
-        onChange={(event) => {
-          const next = event.target.value as ThemeName
+        options={THEME_OPTIONS.map((o) => ({
+          ...o,
+          media:
+            o.value === "light" ? (
+              <SunIcon size={16} />
+            ) : (
+              <MoonIcon size={16} />
+            ),
+        }))}
+        onChange={(next) => {
           setTheme(next)
           applyTheme(next)
           saveTheme(next)
         }}
-      >
-        {OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </Select>
+      />
     </span>
   )
 }

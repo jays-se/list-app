@@ -32,6 +32,18 @@ export interface StatusCountVM {
   count: number
   /** 0–100 share of all tasks, for a bar. */
   percent: number
+  color: LabelColorKey
+}
+
+export type MyWorkTabKey = "overdue" | "today" | "week" | "later"
+
+/** One tab of "My work" on the home page (open tasks assigned to me). */
+export interface MyWorkTabVM {
+  key: MyWorkTabKey
+  label: string
+  count: number
+  tasks: TaskRowVM[]
+  emptyText: string
 }
 
 export interface WorkloadVM {
@@ -46,7 +58,18 @@ export interface WorkloadVM {
 }
 
 export interface DashboardVM {
+  /** e.g. "Good morning, Ada". */
+  greetingText: string
+  /** e.g. "Wednesday 30 September". */
+  dateText: string
   tiles: DashboardTileVM[]
+  myWork: MyWorkTabVM[]
+  /** The first tab with tasks in it (overdue first). */
+  myWorkDefault: MyWorkTabKey
+  /** 0–100 of all tasks that are done. */
+  donePercent: number
+  /** e.g. "12 of 40 tasks done". */
+  doneText: string
   upcoming: TaskRowVM[]
   upcomingEmptyText: string
   reviewQueue: ReviewItemVM[]

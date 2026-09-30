@@ -3,12 +3,13 @@ import type { LabelColorKey } from "@app/protocol"
 import {
   Button,
   DismissIcon,
+  Dropdown,
   Field,
   IconButton,
   Input,
   LabelChip,
-  Select,
   Spinner,
+  Swatch,
 } from "@app/ui-kit"
 import { type FormEvent, useState } from "react"
 import styles from "./LabelsSection.module.css"
@@ -85,16 +86,14 @@ export function LabelsSection() {
           />
         </Field>
         <Field label="Color">
-          <Select
+          <Dropdown
             value={color}
-            onChange={(e) => setColor(e.target.value as LabelColorKey)}
-          >
-            {(vm?.colorOptions ?? []).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+            options={(vm?.colorOptions ?? []).map((o) => ({
+              ...o,
+              media: <Swatch color={o.value} />,
+            }))}
+            onChange={(v) => setColor(v as LabelColorKey)}
+          />
         </Field>
         <Button type="submit" disabled={create.pending}>
           {create.pending ? "Adding…" : "Add label"}

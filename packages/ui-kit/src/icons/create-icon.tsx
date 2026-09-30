@@ -28,3 +28,33 @@ export function createIcon(name: string, path: string) {
   Icon.displayName = name
   return Icon
 }
+
+/**
+ * Outline icons: one or more 20px-grid stroke paths (1.5px, round caps).
+ * Easier to author than filled outlines; `currentColor` like the rest.
+ */
+export function createLineIcon(name: string, d: string) {
+  function Icon({ size = 20, title, ...rest }: IconProps) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        focusable="false"
+        role={title ? "img" : undefined}
+        aria-hidden={title ? undefined : true}
+        aria-label={title}
+        {...rest}
+      >
+        <path d={d} />
+      </svg>
+    )
+  }
+  Icon.displayName = name
+  return Icon
+}

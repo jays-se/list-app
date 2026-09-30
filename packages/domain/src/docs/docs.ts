@@ -150,7 +150,11 @@ export function toDocDetailVM(
     metaText: `Created by ${doc.createdBy?.name ?? FORMER_MEMBER} · edited ${relativeTime(doc.updatedAt, now, locale)} by ${doc.updatedBy?.name ?? FORMER_MEMBER}`,
     clientOptions: [
       { value: "", label: "No client" },
-      ...clients.clients.map((c) => ({ value: c.id, label: c.name })),
+      ...clients.clients.map((c) => ({
+        value: c.id,
+        label: c.name,
+        color: c.color,
+      })),
     ],
     files: doc.files.map((f) => ({
       id: f.id,

@@ -9,13 +9,17 @@ import {
 import type {
   InboxBadgeVM,
   InboxFilter,
+  InboxKindFilterVM,
+  InboxSectionVM,
   InboxVM,
   NotificationKindKey,
   NotificationSettingsVM,
   NotificationVM,
+  Tone,
 } from "@app/protocol"
 import type { QueryOptions } from "@app/query"
 import { defineAction, defineView } from "../runtime.ts"
+import { daysBetween, todayISO } from "../shared/dates.ts"
 import { relativeTime } from "../shared/format.ts"
 import { FORMER_MEMBER } from "../tasks/tasks.collab.vm.ts"
 
@@ -96,6 +100,52 @@ export const KIND_TEXT: Record<
   },
 }
 
+const KIND_ORDER: NotificationKindKey[] = [
+  "MENTION",
+  "ASSIGNED",
+  "REQUEST",
+  "REVIEWED",
+  "STATUS",
+  "DUE",
+]
+
+const KIND_TONE: Record<NotificationKindKey, Tone> = {
+  MENTION: "brand",
+  ASSIGNED: "informative",
+  REQUEST: "warning",
+  REVIEWED: "success",
+  STATUS: "subtle",
+  DUE: "danger",
+}
+
+const asKind = (k: string | undefined): NotificationKindKey | "" =>
+  (KIND_ORDER as string[]).includes(k ?? "") ? (k as NotificationKindKey) : ""
+
+const SECTION_LABEL: Record<InboxSectionVM["key"], string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  week: "Earlier this week",
+  older: "Older",
+}
+
+/** Newest-first notifications split by local day. */
+export function toSections(
+  items: { n: Notification; vm: NotificationVM }[],
+  now: number
+): InboxSectionVM[] {
+  const today = todayISO(now)
+  const sections: InboxSectionVM[] = []
+  for (const { n, vm } of items) {
+    const age = daysBetween(todayISO(Date.parse(n.createdAt)), today)
+    const key: InboxSectionVM["key"] =
+      age <= 0 ? "today" : age === 1 ? "yesterday" : age < 7 ? "week" : "older"
+    const last = sections.at(-1)
+    if (last?.key === key) last.items.push(vm)
+    else sections.push({ key, label: SECTION_LABEL[key], items: [vm] })
+  }
+  return sections
+}
+
 export function toNotificationVM(
   n: Notification,
   now: number,
@@ -113,6 +163,9 @@ export function toNotificationVM(
     quote: n.commentBody,
     timeText: relativeTime(n.createdAt, now, locale),
     unread: n.readAt === null,
+    actorName: n.kind === "DUE" ? null : actor,
+    actorImage: n.kind === "DUE" ? null : (n.actor?.image ?? null),
+    tone: KIND_TONE[n.kind],
   }
 }
 
@@ -120,18 +173,37 @@ export function toInboxVM(
   list: NotificationList,
   filter: InboxFilter,
   now: number,
-  locale: string
+  locale: string,
+  kindParam?: string
 ): InboxVM {
-  const items = list.notifications.map((n) => toNotificationVM(n, now, locale))
+  const kind = asKind(kindParam)
+  const all = list.notifications.map((n) => ({
+    n,
+    vm: toNotificationVM(n, now, locale),
+  }))
+  const shown = kind ? all.filter((x) => x.n.kind === kind) : all
+  const items = shown.map((x) => x.vm)
+  const kindFilters: InboxKindFilterVM[] = [
+    { value: "", label: "All", count: all.length },
+    ...KIND_ORDER.map((k) => ({
+      value: k,
+      label: KIND_TEXT[k].setting,
+      count: all.filter((x) => x.n.kind === k).length,
+    })).filter((f) => f.count > 0 || f.value === kind),
+  ]
   return {
     filter,
+    kind,
     items,
+    sections: toSections(shown, now),
+    kindFilters,
     unreadCount: list.unread,
     unreadText: list.unread ? `${list.unread} unread` : "All caught up",
     isEmpty: items.length === 0,
-    emptyText:
-      filter === "unread"
-        ? "No unread notifications."
+    emptyText: kind
+      ? `No ${KIND_TEXT[kind].setting.toLowerCase()} here.`
+      : filter === "unread"
+        ? "You're all caught up. No unread notifications."
         : "Nothing here yet. Mentions, assignments and reviews show up here.",
   }
 }
@@ -158,11 +230,17 @@ export function toSettingsVM(s: NotificationSettings): NotificationSettingsVM {
 
 export const notificationViews = {
   "inbox.list": defineView({
-    queries: (params: { filter: InboxFilter }, ctx) => ({
+    queries: (params: { filter: InboxFilter; kind?: string }, ctx) => ({
       list: inboxQuery(ctx.api, asFilter(params.filter)),
     }),
     compute: ({ list }, params, ctx) =>
-      toInboxVM(list, asFilter(params.filter), ctx.now(), ctx.locale),
+      toInboxVM(
+        list,
+        asFilter(params.filter),
+        ctx.now(),
+        ctx.locale,
+        params.kind
+      ),
   }),
   "inbox.badge": defineView({
     queries: (_p: Record<string, never>, ctx) => ({

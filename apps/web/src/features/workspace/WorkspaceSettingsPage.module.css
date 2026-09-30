@@ -125,3 +125,7 @@
   background: var(--colorStatusInfoBackground1);
   color: var(--colorStatusInfoForeground1);
 }
+
+.role {
+  width: 140px;
+}

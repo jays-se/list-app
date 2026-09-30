@@ -245,7 +245,7 @@ describe("inbox through the kernel", () => {
     })
     expect(t.data<InboxVM>("unread")).toMatchObject({
       isEmpty: true,
-      emptyText: "No unread notifications.",
+      emptyText: "You're all caught up. No unread notifications.",
     })
   })
 

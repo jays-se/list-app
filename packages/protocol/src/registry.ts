@@ -12,6 +12,7 @@ import type {
   CaptureSource,
   DashboardVM,
 } from "./views/insights.ts"
+import type { SearchVM } from "./views/search.ts"
 import type { MembersVM, SessionVM, WorkspaceRefVM } from "./views/session.ts"
 import type { SystemInfoVM } from "./views/system.ts"
 import type {
@@ -51,7 +52,10 @@ export interface ViewMap {
   "tasks.history": { params: { taskId: string }; data: TaskHistoryVM }
   "clients.list": { params: Record<string, never>; data: ClientsVM }
   "clients.detail": { params: { clientId: string }; data: ClientDetailVM }
-  "inbox.list": { params: { filter: InboxFilter }; data: InboxVM }
+  "inbox.list": {
+    params: { filter: InboxFilter; kind?: string }
+    data: InboxVM
+  }
   "inbox.badge": { params: Record<string, never>; data: InboxBadgeVM }
   "notifications.settings": {
     params: Record<string, never>
@@ -62,6 +66,8 @@ export interface ViewMap {
   "calendar.month": { params: { month?: string }; data: CalendarVM }
   "docs.list": { params: { clientId?: string }; data: DocsVM }
   "docs.detail": { params: { docId: string }; data: DocDetailVM }
+  /** Pages, tasks, docs and clients matching `q` (ADR-0026). */
+  "search.global": { params: { q: string }; data: SearchVM }
 }
 
 type NoInput = Record<string, never>

@@ -181,9 +181,8 @@ describe("tasks page", () => {
     expect(row.textContent).toContain("Bug")
     expect(row.textContent).toContain("Assignees: Grace")
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Status" }), {
-      target: { value: "DONE" },
-    })
+    fireEvent.click(screen.getByRole("combobox", { name: "Status" }))
+    fireEvent.click(screen.getByRole("option", { name: "Done" }))
     expect(await screen.findByText("No matching tasks")).toBeTruthy()
     expect(router.state.location.search).toBe("?status=DONE")
     expect(api.calls).toContain("GET /tasks?status=DONE")
@@ -254,9 +253,9 @@ describe("tasks page", () => {
     fireEvent.change(within(drawer).getByRole("textbox", { name: /Title/ }), {
       target: { value: "Write docs" },
     })
-    fireEvent.click(
-      within(drawer).getByRole("checkbox", { name: /Grace Hopper/ })
-    )
+    fireEvent.click(within(drawer).getByRole("combobox", { name: "Assignees" }))
+    fireEvent.click(screen.getByRole("option", { name: /Grace Hopper/ }))
+    fireEvent.pointerDown(document.body)
     fireEvent.click(within(drawer).getByRole("button", { name: "Create task" }))
     await waitFor(() => expect(api.calls).toContain("POST /tasks"))
     const post = api.handler.mock.calls.find(

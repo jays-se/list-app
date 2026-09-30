@@ -1,6 +1,5 @@
 import { useAction, useView } from "@app/bridge"
-import { Select } from "@app/ui-kit"
-import { useId } from "react"
+import { Dropdown } from "@app/ui-kit"
 import styles from "./WorkspaceSwitcher.module.css"
 
 /**
@@ -8,7 +7,6 @@ import styles from "./WorkspaceSwitcher.module.css"
  * every live view (ADR-0019), so this component only picks the id.
  */
 export function WorkspaceSwitcher() {
-  const id = useId()
   const session = useView("session.current", {})
   const switchTo = useAction("workspaces.switch")
   const vm = session.data
@@ -16,25 +14,27 @@ export function WorkspaceSwitcher() {
 
   return (
     <span className={styles.root}>
-      <label htmlFor={id} className="visually-hidden">
-        Workspace
-      </label>
-      <Select
-        id={id}
+      <Dropdown
+        aria-label="Workspace"
         size="small"
-        appearance="filled"
+        appearance="subtle"
+        className={styles.dropdown}
         value={vm.activeWorkspace.id}
         disabled={switchTo.pending}
-        onChange={(e) =>
-          switchTo.run({ workspaceId: e.target.value }).catch(() => {})
+        options={vm.workspaces.map((w) => ({
+          value: w.id,
+          label: w.name,
+          description: w.roleLabel,
+          media: (
+            <span className={styles.mark} aria-hidden="true">
+              {w.name.slice(0, 1).toUpperCase()}
+            </span>
+          ),
+        }))}
+        onChange={(workspaceId) =>
+          switchTo.run({ workspaceId }).catch(() => {})
         }
-      >
-        {vm.workspaces.map((w) => (
-          <option key={w.id} value={w.id}>
-            {w.name}
-          </option>
-        ))}
-      </Select>
+      />
       {switchTo.error && (
         <span role="alert" className={styles.error}>
           {switchTo.error.message}

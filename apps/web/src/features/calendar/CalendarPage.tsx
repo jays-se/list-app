@@ -1,7 +1,6 @@
 import { useView } from "@app/bridge"
 import { Button, cx, Spinner } from "@app/ui-kit"
 import { Link, useSearchParams } from "react-router"
-import { TaskDrawerHost } from "../tasks/TaskDrawerHost.tsx"
 import { TaskRowList } from "../tasks/TaskGroups.tsx"
 import styles from "./CalendarPage.module.css"
 
@@ -126,7 +125,6 @@ export function CalendarPage() {
           </section>
         </div>
       )}
-      <TaskDrawerHost />
     </div>
   )
 }

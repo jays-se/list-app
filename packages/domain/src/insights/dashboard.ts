@@ -1,9 +1,19 @@
 import type { MemberList, TaskSummary } from "@app/api-client"
-import type { DashboardTileVM, DashboardVM } from "@app/protocol"
+import type {
+  DashboardTileVM,
+  DashboardVM,
+  MyWorkTabKey,
+  MyWorkTabVM,
+} from "@app/protocol"
 import { defineView } from "../runtime.ts"
 import { sessionQuery } from "../session/session.queries.ts"
 import { addDays, todayISO } from "../shared/dates.ts"
-import { CLOSED, STATUS_LABEL, STATUS_ORDER } from "../tasks/tasks.labels.ts"
+import {
+  CLOSED,
+  STATUS_COLOR,
+  STATUS_LABEL,
+  STATUS_ORDER,
+} from "../tasks/tasks.labels.ts"
 import { normalizeFilter, taskListQuery } from "../tasks/tasks.queries.ts"
 import { dueOf, toTaskRowVM } from "../tasks/tasks.vm.ts"
 import { membersQuery } from "../workspace/members.queries.ts"
@@ -13,13 +23,74 @@ const plural = (n: number, one: string, many = `${one}s`) =>
 
 const isOpen = (t: TaskSummary) => !CLOSED.has(t.status)
 
+const byDue = (a: TaskSummary, b: TaskSummary) =>
+  (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") ||
+  a.title.localeCompare(b.title)
+
+/** "Good morning, Ada" by the local hour. */
+export function greeting(firstName: string, hour: number | null): string {
+  const part =
+    hour === null
+      ? "Welcome"
+      : hour < 5
+        ? "Good evening"
+        : hour < 12
+          ? "Good morning"
+          : hour < 18
+            ? "Good afternoon"
+            : "Good evening"
+  return firstName ? `${part}, ${firstName}` : part
+}
+
+/** My open tasks split by when they're due (the home page tabs). */
+export function toMyWork(
+  mine: TaskSummary[],
+  today: string,
+  locale: string
+): MyWorkTabVM[] {
+  const weekEnd = addDays(today, 6)
+  const buckets: Record<MyWorkTabKey, TaskSummary[]> = {
+    overdue: [],
+    today: [],
+    week: [],
+    later: [],
+  }
+  for (const t of mine) {
+    const d = t.dueDate
+    if (d !== null && d < today) buckets.overdue.push(t)
+    else if (d === today) buckets.today.push(t)
+    else if (d !== null && d <= weekEnd) buckets.week.push(t)
+    else buckets.later.push(t)
+  }
+  const tab = (
+    key: MyWorkTabKey,
+    label: string,
+    emptyText: string
+  ): MyWorkTabVM => ({
+    key,
+    label,
+    count: buckets[key].length,
+    tasks: [...buckets[key]]
+      .sort(byDue)
+      .map((t) => toTaskRowVM(t, today, locale)),
+    emptyText,
+  })
+  return [
+    tab("overdue", "Overdue", "Nothing overdue. Nice work."),
+    tab("today", "Due today", "Nothing due today."),
+    tab("week", "Next 7 days", "Nothing due in the next week."),
+    tab("later", "Later", "No other open tasks assigned to you."),
+  ]
+}
+
 /** Everything on the dashboard, aggregated from the task list (E7-S1). */
 export function toDashboardVM(
   tasks: TaskSummary[],
   members: MemberList,
   userId: string,
   today: string,
-  locale: string
+  locale: string,
+  extra: { firstName?: string; now?: number } = {}
 ): DashboardVM {
   const open = tasks.filter(isOpen)
   const weekEnd = addDays(today, 6)
@@ -108,8 +179,11 @@ export function toDashboardVM(
       label: STATUS_LABEL[status],
       count,
       percent: total ? Math.round((count / total) * 100) : 0,
+      color: STATUS_COLOR[status],
     }
   })
+  const done = tasks.filter((t) => t.status === "DONE").length
+  const myWork = toMyWork(mine, today, locale)
 
   const load = members.members.map((m) => {
     const theirs = open.filter((t) => t.assignees.some((a) => a.id === m.id))
@@ -133,7 +207,21 @@ export function toDashboardVM(
     }))
 
   return {
+    greetingText: greeting(
+      extra.firstName ?? "",
+      extra.now === undefined ? null : new Date(extra.now).getHours()
+    ),
+    dateText: new Intl.DateTimeFormat(locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    }).format(Date.parse(`${today}T12:00:00Z`)),
     tiles,
+    myWork,
+    myWorkDefault: myWork.find((t) => t.count > 0)?.key ?? "today",
+    donePercent: total ? Math.round((done / total) * 100) : 0,
+    doneText: `${done} of ${plural(total, "task")} done`,
     upcoming,
     upcomingEmptyText: "Nothing due soon.",
     reviewQueue,
@@ -157,7 +245,11 @@ export const dashboardViews = {
         members,
         session.user?.id ?? "",
         todayISO(ctx.now()),
-        ctx.locale
+        ctx.locale,
+        {
+          firstName: session.user?.name.trim().split(/\s+/)[0] ?? "",
+          now: ctx.now(),
+        }
       ),
   }),
 }

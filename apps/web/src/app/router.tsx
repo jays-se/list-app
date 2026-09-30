@@ -1,5 +1,5 @@
 import type { Bridge } from "@app/bridge"
-import { createBrowserRouter, type RouteObject } from "react-router"
+import { createBrowserRouter, Navigate, type RouteObject } from "react-router"
 import { LoginPage } from "../features/auth/LoginPage.tsx"
 import { CalendarPage } from "../features/calendar/CalendarPage.tsx"
 import { CapturePage } from "../features/capture/CapturePage.tsx"
@@ -8,7 +8,10 @@ import { ClientsPage } from "../features/clients/ClientsPage.tsx"
 import { DashboardPage } from "../features/dashboard/DashboardPage.tsx"
 import { DocPage } from "../features/docs/DocPage.tsx"
 import { DocsPage } from "../features/docs/DocsPage.tsx"
-import { InboxPage } from "../features/inbox/InboxPage.tsx"
+import { InboxPage, inboxParams } from "../features/inbox/InboxPage.tsx"
+import { AboutPage } from "../features/settings/AboutPage.tsx"
+import { NotificationSettingsPage } from "../features/settings/NotificationSettingsPage.tsx"
+import { SettingsLayout } from "../features/settings/SettingsLayout.tsx"
 import { listParams, TasksPage } from "../features/tasks/TasksPage.tsx"
 import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
 import { WorkspaceSettingsPage } from "../features/workspace/WorkspaceSettingsPage.tsx"
@@ -46,7 +49,6 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
               element: <DashboardPage />,
               loader: () => {
                 bridge.prefetch("dashboard.summary", {})
-                bridge.prefetch("system.info", {})
                 return null
               },
             },
@@ -111,21 +113,43 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
               path: "/inbox",
               element: <InboxPage />,
               loader: ({ request }) => {
-                const unread =
-                  new URL(request.url).searchParams.get("filter") === "unread"
-                bridge.prefetch("inbox.list", {
-                  filter: unread ? "unread" : "all",
-                })
+                bridge.prefetch(
+                  "inbox.list",
+                  inboxParams(new URL(request.url).searchParams)
+                )
                 return null
               },
             },
             {
-              path: "/settings/workspace",
-              element: <WorkspaceSettingsPage />,
-              loader: () => {
-                bridge.prefetch("workspace.members", {})
-                return null
-              },
+              path: "/settings",
+              element: <SettingsLayout />,
+              children: [
+                { index: true, element: <Navigate to="workspace" replace /> },
+                {
+                  path: "workspace",
+                  element: <WorkspaceSettingsPage />,
+                  loader: () => {
+                    bridge.prefetch("workspace.members", {})
+                    return null
+                  },
+                },
+                {
+                  path: "notifications",
+                  element: <NotificationSettingsPage />,
+                  loader: () => {
+                    bridge.prefetch("notifications.settings", {})
+                    return null
+                  },
+                },
+                {
+                  path: "about",
+                  element: <AboutPage />,
+                  loader: () => {
+                    bridge.prefetch("system.info", {})
+                    return null
+                  },
+                },
+              ],
             },
           ],
         },

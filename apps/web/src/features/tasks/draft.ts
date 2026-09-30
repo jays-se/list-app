@@ -21,3 +21,8 @@ export function fieldError(error: ProtocolError | undefined, field: string) {
 export function formError(error: ProtocolError | undefined) {
   return error && !error.fieldErrors?.length ? error.message : undefined
 }
+
+/** Multi-select results in a stable (sorted) order, like `toggleId`. */
+export function sortIds(ids: string[]): string[] {
+  return [...ids].sort()
+}

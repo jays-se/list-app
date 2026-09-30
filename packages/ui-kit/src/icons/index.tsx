@@ -26,3 +26,6 @@ export const MoonIcon = createIcon(
   "MoonIcon",
   "M15.49 14.3a6.5 6.5 0 0 1-9.8-9.79 7 7 0 1 0 9.8 9.8Zm1.43-1.36a.5.5 0 0 1 .55.64A8 8 0 1 1 6.42 2.53a.5.5 0 0 1 .64.55 5.5 5.5 0 0 0 9.86 9.86Z"
 )
+
+export { createLineIcon } from "./create-icon.tsx"
+export * from "./lines.tsx"

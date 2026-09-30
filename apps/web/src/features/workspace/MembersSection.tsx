@@ -5,7 +5,7 @@ import {
   Badge,
   Button,
   ConfirmDialog,
-  Select,
+  Dropdown,
   Spinner,
 } from "@app/ui-kit"
 import { useState } from "react"
@@ -95,28 +95,17 @@ export function MembersSection({ workspaceName }: { workspaceName: string }) {
                   </span>
                 </span>
                 {m.canChangeRole ? (
-                  <Select
+                  <Dropdown
                     size="small"
                     aria-label={`Role for ${m.name}`}
-                    // Keyed on the saved role so a failed change snaps back.
-                    key={`${m.id}:${m.role}`}
-                    defaultValue={m.role}
+                    className={styles.role}
+                    value={m.role}
                     disabled={setRole.pending}
-                    onChange={(e) =>
-                      setRole
-                        .run({
-                          userId: m.id,
-                          role: e.target.value as MemberVM["role"],
-                        })
-                        .catch(() => {})
+                    options={vm.roleOptions}
+                    onChange={(role: MemberVM["role"]) =>
+                      setRole.run({ userId: m.id, role }).catch(() => {})
                     }
-                  >
-                    {vm.roleOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 ) : (
                   <Badge color={m.isOwner ? "brand" : "subtle"}>
                     {m.roleLabel}

@@ -23,11 +23,33 @@ export interface NotificationVM {
   quote: string | null
   timeText: string
   unread: boolean
+  /** Who did it; null for reminders. "A former member" when they left. */
+  actorName: string | null
+  actorImage: string | null
+  tone: import("./tasks.ts").Tone
+}
+
+export interface InboxSectionVM {
+  key: "today" | "yesterday" | "week" | "older"
+  label: string
+  items: NotificationVM[]
+}
+
+export interface InboxKindFilterVM {
+  /** "" means every kind. */
+  value: NotificationKindKey | ""
+  label: string
+  count: number
 }
 
 export interface InboxVM {
   filter: InboxFilter
+  kind: NotificationKindKey | ""
   items: NotificationVM[]
+  /** `items` grouped by day, newest first. */
+  sections: InboxSectionVM[]
+  /** Kinds present in the list (plus "All"), for filter chips. */
+  kindFilters: InboxKindFilterVM[]
   unreadCount: number
   /** e.g. "3 unread", "All caught up". */
   unreadText: string

@@ -6,6 +6,7 @@ export type ValidationState = "none" | "error" | "warning" | "success"
 
 interface FieldContextValue {
   id: string
+  labelId: string
   describedBy: string | undefined
   invalid: boolean
   required: boolean
@@ -25,7 +26,7 @@ export interface FieldProps {
   validationState?: ValidationState
   required?: boolean
   orientation?: "vertical" | "horizontal"
-  className?: string
+  className?: string | undefined
   children: ReactNode
 }
 
@@ -49,13 +50,14 @@ export function Field({
   const describedBy = [messageId, hintId].filter(Boolean).join(" ") || undefined
   const value: FieldContextValue = {
     id: `${id}-control`,
+    labelId: `${id}-label`,
     describedBy,
     invalid: validationState === "error",
     required,
   }
   return (
     <div className={cx(styles.root, styles[orientation], className)}>
-      <label className={styles.label} htmlFor={value.id}>
+      <label id={value.labelId} className={styles.label} htmlFor={value.id}>
         {label}
         {required && (
           <span className={styles.required} aria-hidden="true">

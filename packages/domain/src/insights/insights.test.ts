@@ -206,3 +206,56 @@ describe("calendar", () => {
     ).toMatchObject({ done: true, tone: "subtle" })
   })
 })
+
+describe("home page extras", () => {
+  it("greets by the local hour", async () => {
+    const { greeting } = await import("./dashboard.ts")
+    expect(greeting("Ada", 3)).toBe("Good evening, Ada")
+    expect(greeting("Ada", 9)).toBe("Good morning, Ada")
+    expect(greeting("Ada", 14)).toBe("Good afternoon, Ada")
+    expect(greeting("", 20)).toBe("Good evening")
+    expect(greeting("Ada", null)).toBe("Welcome, Ada")
+  })
+
+  it("splits my open tasks into due tabs and reports progress", () => {
+    const mine = [
+      task({ title: "Late", assignees: [ada], dueDate: "2026-10-06" }),
+      task({ title: "Now", assignees: [ada], dueDate: TODAY }),
+      task({ title: "Soon B", assignees: [ada], dueDate: "2026-10-13" }),
+      task({ title: "Soon A", assignees: [ada], dueDate: "2026-10-08" }),
+      task({ title: "Someday", assignees: [ada] }),
+      task({ title: "Far", assignees: [ada], dueDate: "2026-10-30" }),
+      task({ title: "Shipped", assignees: [ada], status: "DONE" }),
+      task({ title: "Bob's", assignees: [bob], dueDate: TODAY }),
+    ]
+    const vm = toDashboardVM(mine, members, "u1", TODAY, "en-GB", {
+      firstName: "Ada",
+      now: Date.parse(`${TODAY}T09:00:00`),
+    })
+    expect(vm.greetingText).toBe("Good morning, Ada")
+    expect(vm.dateText).toBe("Wednesday 7 October")
+    const tabs = Object.fromEntries(
+      vm.myWork.map((t) => [t.key, t.tasks.map((x) => x.title)])
+    )
+    expect(tabs).toEqual({
+      overdue: ["Late"],
+      today: ["Now"],
+      week: ["Soon A", "Soon B"],
+      later: ["Far", "Someday"],
+    })
+    expect(vm.myWorkDefault).toBe("overdue")
+    expect(vm.doneText).toBe("1 of 8 tasks done")
+    expect(vm.donePercent).toBe(13)
+    expect(vm.statusCounts.find((s) => s.status === "DONE")?.color).toBe(
+      "green"
+    )
+  })
+
+  it("defaults to the Due today tab when nothing is assigned", () => {
+    const vm = toDashboardVM([], members, "u1", TODAY, "en-GB")
+    expect(vm.myWorkDefault).toBe("today")
+    expect(vm.greetingText).toBe("Welcome")
+    expect(vm.doneText).toBe("0 of 0 tasks done")
+    expect(vm.myWork.every((t) => t.count === 0 && t.emptyText)).toBe(true)
+  })
+})

@@ -1,0 +1,84 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacingL);
+}
+
+.text {
+  display: grid;
+  gap: var(--spacingXXS);
+  min-width: 0;
+}
+.label {
+  font-weight: var(--fontWeightSemibold);
+  cursor: pointer;
+}
+.description {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}
+
+.control {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.track {
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 0 var(--spacingXXS);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStrokeAccessible);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorNeutralBackground1);
+  transition: background var(--durationFaster) var(--curveEasyEase);
+}
+.thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorNeutralForeground3);
+  transition: transform var(--durationFast) var(--curveEasyEase);
+}
+.input:checked + .track {
+  border-color: var(--colorBrandBackground);
+  background: var(--colorBrandBackground);
+}
+.input:checked + .track .thumb {
+  background: var(--colorNeutralForegroundOnBrand);
+  transform: translateX(20px);
+}
+.input:focus-visible + .track {
+  outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+  outline-offset: var(--strokeWidthThin);
+}
+.input:disabled + .track {
+  border-color: var(--colorNeutralStrokeDisabled);
+  background: var(--colorNeutralBackgroundDisabled);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumb,
+  .track {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .input:checked + .track {
+    background: Highlight;
+  }
+  .thumb {
+    background: CanvasText;
+  }
+}

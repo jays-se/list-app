@@ -1,6 +1,6 @@
 import { useAction } from "@app/bridge"
 import type { TaskDetailVM } from "@app/protocol"
-import { Avatar, Button, Field, Select, Textarea } from "@app/ui-kit"
+import { Avatar, Button, Dropdown, Field, Textarea } from "@app/ui-kit"
 import { type FormEvent, useState } from "react"
 import styles from "./sections.module.css"
 
@@ -77,19 +77,24 @@ export function CommentsSection({ vm }: { vm: TaskDetailVM }) {
         </Field>
         <div className={styles.row}>
           <span className={styles.mentionPicker}>
-            <Select
+            <Dropdown
               size="small"
               aria-label="Mention someone"
               value=""
-              onChange={(e) => mention(e.target.value)}
-            >
-              <option value="">Mention someone…</option>
-              {vm.options.members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </Select>
+              placeholder="@ Mention someone…"
+              options={vm.options.members.map((m) => ({
+                value: m.id,
+                label: m.name,
+                media: (
+                  <Avatar
+                    name={m.name}
+                    image={m.image ?? undefined}
+                    size={20}
+                  />
+                ),
+              }))}
+              onChange={(id) => mention(id)}
+            />
           </span>
           <span className={styles.grow} />
           <Button type="submit" appearance="primary" disabled={add.pending}>

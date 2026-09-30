@@ -18,6 +18,7 @@ import type {
   Tone,
 } from "@app/protocol"
 import {
+  addDays,
   daysBetween,
   formatDay,
   formatLongDate,
@@ -157,11 +158,15 @@ export function toTaskListVM(
       ],
       labelOptions: [
         { value: "", label: "Any label" },
-        ...labels.map((l) => ({ value: l.id, label: l.name })),
+        ...labels.map((l) => ({ value: l.id, label: l.name, color: l.color })),
       ],
       clientOptions: [
         { value: "", label: "Any client" },
-        ...clients.clients.map((c) => ({ value: c.id, label: c.name })),
+        ...clients.clients.map((c) => ({
+          value: c.id,
+          label: c.name,
+          color: c.color,
+        })),
       ],
       applied: { ...filter },
       activeCount,
@@ -190,7 +195,17 @@ export function toFormOptionsVM(
     labels: labels as LabelVM[],
     clientOptions: [
       { value: "", label: "No client" },
-      ...clients.clients.map((c) => ({ value: c.id, label: c.name })),
+      ...clients.clients.map((c) => ({
+        value: c.id,
+        label: c.name,
+        color: c.color,
+      })),
+    ],
+    duePresets: [
+      { value: today, label: "Today" },
+      { value: addDays(today, 1), label: "Tomorrow" },
+      { value: addDays(today, 7), label: "In a week" },
+      { value: addDays(today, 14), label: "In 2 weeks" },
     ],
     defaults: {
       title: "",

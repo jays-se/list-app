@@ -29,6 +29,8 @@ export type Tone =
 export interface OptionVM<V extends string = string> {
   value: V
   label: string
+  /** Swatch for dropdowns (status dot, priority flag, client colour). */
+  color?: LabelColorKey
 }
 
 export interface PersonVM {
@@ -133,6 +135,8 @@ export interface TaskFormOptionsVM {
   members: PersonVM[]
   labels: LabelVM[]
   clientOptions: OptionVM[]
+  /** Quick picks for the due date, e.g. Today, Tomorrow (ISO values). */
+  duePresets: OptionVM[]
   /** A fresh draft: dates default to today. */
   defaults: TaskDraft
 }

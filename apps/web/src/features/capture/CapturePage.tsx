@@ -3,10 +3,10 @@ import type { CaptureLineVM, CaptureSource } from "@app/protocol"
 import {
   Button,
   DismissIcon,
+  Dropdown,
   Field,
   IconButton,
   Input,
-  Select,
   Textarea,
 } from "@app/ui-kit"
 import { useState } from "react"
@@ -189,13 +189,14 @@ function SourceField({
           : "Meeting-note tasks start unassigned."
       }
     >
-      <Select
+      <Dropdown
         value={source}
-        onChange={(e) => onChange(e.target.value as CaptureSource)}
-      >
-        <option value="MEETING_NOTE">Meeting note</option>
-        <option value="PERSONAL">Personal</option>
-      </Select>
+        options={[
+          { value: "MEETING_NOTE", label: "Meeting note" },
+          { value: "PERSONAL", label: "Personal" },
+        ]}
+        onChange={(v) => onChange(v as CaptureSource)}
+      />
     </Field>
   )
 }

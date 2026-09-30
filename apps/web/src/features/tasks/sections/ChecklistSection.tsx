@@ -1,13 +1,14 @@
 import { useAction } from "@app/bridge"
 import type { TaskDetailVM } from "@app/protocol"
 import {
+  Avatar,
   Button,
   Checkbox,
   DismissIcon,
+  Dropdown,
   Field,
   IconButton,
   Input,
-  Select,
 } from "@app/ui-kit"
 import { type FormEvent, useState } from "react"
 import styles from "./sections.module.css"
@@ -110,27 +111,31 @@ export function ChecklistSection({ vm }: { vm: TaskDetailVM }) {
               )}
               {canEdit ? (
                 <span className={styles.picker}>
-                  <Select
+                  <Dropdown
                     size="small"
+                    appearance="subtle"
                     aria-label={`Assignee for ${c.title}`}
                     value={c.assigneeId}
-                    onChange={(e) =>
+                    options={[
+                      { value: "", label: "Unassigned" },
+                      ...vm.options.members.map((m) => ({
+                        value: m.id,
+                        label: m.name,
+                        media: (
+                          <Avatar
+                            name={m.name}
+                            image={m.image ?? undefined}
+                            size={20}
+                          />
+                        ),
+                      })),
+                    ]}
+                    onChange={(assigneeId) =>
                       update
-                        .run({
-                          taskId: vm.id,
-                          itemId: c.id,
-                          assigneeId: e.target.value,
-                        })
+                        .run({ taskId: vm.id, itemId: c.id, assigneeId })
                         .catch(() => {})
                     }
-                  >
-                    <option value="">Unassigned</option>
-                    {vm.options.members.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 </span>
               ) : (
                 c.assigneeName && (

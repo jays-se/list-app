@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright"
-import { expect, type Page } from "@playwright/test"
+import { expect, type Locator, type Page } from "@playwright/test"
 
 /**
  * ADR-0005 guard: make every network API throw on the main thread. The page
@@ -66,4 +66,48 @@ export async function expectNoAxeViolations(page: Page, label: string) {
     results.violations,
     `${label}: ${JSON.stringify(results.violations, null, 2)}`
   ).toEqual([])
+}
+
+type Scope = Page | Locator
+const pageOf = (scope: Scope): Page =>
+  "context" in scope && typeof scope.context === "function"
+    ? (scope as Page)
+    : (scope as Locator).page()
+
+/** Picks one option in a ui-kit Dropdown (a combobox + listbox popover). */
+export async function choose(
+  scope: Scope,
+  name: string | RegExp,
+  option: string | RegExp
+) {
+  await scope
+    .getByRole("combobox", { name, exact: typeof name === "string" })
+    .click()
+  await pageOf(scope)
+    .getByRole("option", { name: option, exact: typeof option === "string" })
+    .click()
+}
+
+/** Toggles options in a MultiDropdown, then closes it. */
+export async function chooseMany(
+  scope: Scope,
+  name: string | RegExp,
+  options: (string | RegExp)[]
+) {
+  const box = scope.getByRole("combobox", {
+    name,
+    exact: typeof name === "string",
+  })
+  await box.click()
+  const page = pageOf(scope)
+  for (const option of options) {
+    await page.getByRole("option", { name: option }).click()
+  }
+  await box.press("Escape")
+}
+
+/** Sign out lives in the account (avatar) menu. */
+export async function signOut(page: Page) {
+  await page.getByRole("button", { name: /^Account:/ }).click()
+  await page.getByRole("menuitem", { name: "Sign out" }).click()
 }

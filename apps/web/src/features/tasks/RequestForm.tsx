@@ -1,8 +1,8 @@
 import type { ProtocolError, RequestDraft, TaskDetailVM } from "@app/protocol"
-import { Field, Input, Select } from "@app/ui-kit"
-import { fieldError, formError, toggleId } from "./draft.ts"
+import { Field, Input } from "@app/ui-kit"
+import { fieldError, formError } from "./draft.ts"
+import { DueField, OptionPicker, PeoplePicker } from "./pickers.tsx"
 import styles from "./TaskForm.module.css"
-import { PeoplePicker } from "./TaskForm.tsx"
 
 /**
  * Request mode (E5-S3): an assignee edits the requestable fields; the
@@ -24,29 +24,21 @@ export function RequestForm({
   const pending = vm.pendingFields
   return (
     <div className={styles.form}>
-      <Field
-        label="Status"
-        hint={pending.status}
-        validationMessage={fieldError(error, "status")}
-      >
-        <Select
+      <div className={styles.sheet}>
+        <OptionPicker
+          label="Status"
+          hint={pending.status}
+          error={fieldError(error, "status")}
+          options={vm.options.statusOptions}
           value={draft.status}
-          onChange={(e) =>
-            set("status", e.target.value as RequestDraft["status"])
-          }
-        >
-          {vm.options.statusOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <div className={styles.row3}>
+          onChange={(v) => set("status", v)}
+        />
         <Field
           label="Start"
           hint={pending.startDate}
           validationMessage={fieldError(error, "startDate")}
+          orientation="horizontal"
+          className={styles.property}
         >
           <Input
             type="date"
@@ -58,6 +50,8 @@ export function RequestForm({
           label="End"
           hint={pending.endDate}
           validationMessage={fieldError(error, "endDate")}
+          orientation="horizontal"
+          className={styles.property}
         >
           <Input
             type="date"
@@ -65,26 +59,22 @@ export function RequestForm({
             onChange={(e) => set("endDate", e.target.value)}
           />
         </Field>
-        <Field
-          label="Due"
-          hint={pending.dueDate ?? "Optional"}
-          validationMessage={fieldError(error, "dueDate")}
-        >
-          <Input
-            type="date"
-            value={draft.dueDate}
-            onChange={(e) => set("dueDate", e.target.value)}
-          />
-        </Field>
+        <DueField
+          value={draft.dueDate}
+          presets={vm.options.duePresets}
+          hint={pending.dueDate ?? undefined}
+          error={fieldError(error, "dueDate")}
+          onChange={(v) => set("dueDate", v)}
+        />
+        <PeoplePicker
+          label="Assignees"
+          hint={vm.pendingAssigneesText ?? undefined}
+          people={vm.options.members}
+          emptyText="No members yet"
+          selected={draft.assigneeIds}
+          onChange={(ids) => set("assigneeIds", ids)}
+        />
       </div>
-      <PeoplePicker
-        legend="Assignees"
-        hint={vm.pendingAssigneesText ?? undefined}
-        people={vm.options.members}
-        emptyText="No members yet."
-        selected={draft.assigneeIds}
-        onToggle={(id) => set("assigneeIds", toggleId(draft.assigneeIds, id))}
-      />
       {formError(error) && (
         <p role="alert" className={styles.error}>
           {formError(error)}

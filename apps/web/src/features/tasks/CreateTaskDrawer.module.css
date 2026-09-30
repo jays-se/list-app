@@ -1,0 +1,27 @@
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacingS) var(--spacingM);
+  width: 100%;
+}
+
+.hint {
+  margin-left: auto;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}
+
+.created {
+  margin: 0 0 var(--spacingL);
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorStatusSuccessBackground1);
+  color: var(--colorStatusSuccessForeground1);
+}
+
+@media (max-width: 480px) {
+  .hint {
+    display: none;
+  }
+}

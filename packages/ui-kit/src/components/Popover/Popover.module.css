@@ -1,0 +1,37 @@
+/* Shared surface for dropdown lists, menus and the search panel. */
+.panel {
+  position: fixed;
+  inset: auto;
+  z-index: 20;
+  box-sizing: border-box;
+  margin: 0;
+  min-width: 160px;
+  max-width: min(420px, calc(100vw - 16px));
+  overflow: auto;
+  padding: var(--spacingXS);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusLarge);
+  background: var(--colorNeutralBackground1);
+  box-shadow: var(--shadow16);
+  color: var(--colorNeutralForeground1);
+  animation: enter var(--durationFast) var(--curveDecelerateMid);
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .panel {
+    border-color: CanvasText;
+  }
+}

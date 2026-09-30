@@ -5,6 +5,7 @@ import {
   expectNoAxeViolations,
   forbidMainThreadNetwork,
   signIn,
+  signOut,
   uniquePerson,
 } from "./helpers.ts"
 
@@ -34,8 +35,8 @@ test("first sign-in → onboarding → create workspace → home", async ({
   await createWorkspace(page, "Acme")
   await expect(page).toHaveURL(/\/$/)
   await expect(page.getByRole("main")).toContainText("You're in Acme")
-  await expect(page.getByRole("combobox", { name: "Workspace" })).toHaveValue(
-    /.+/
+  await expect(page.getByRole("combobox", { name: "Workspace" })).toContainText(
+    "Acme"
   )
   expect(errors).toEqual([])
 })
@@ -44,7 +45,7 @@ test("deep link survives sign-in (returnTo)", async ({ page }) => {
   const person = uniquePerson("Grace")
   await signIn(page, person)
   await createWorkspace(page, "Deep link co")
-  await page.getByRole("button", { name: "Sign out" }).click()
+  await signOut(page)
   await expect(page).toHaveURL(/\/login$/)
 
   await signIn(page, person, "/settings/workspace")
@@ -114,10 +115,11 @@ test("switching workspaces and signing out", async ({ page }) => {
   const switcher = page.getByRole("combobox", { name: "Workspace" })
   await expect(page.getByRole("heading", { name: "Bravo" })).toBeVisible()
 
-  await switcher.selectOption({ label: "Alpha" })
+  await switcher.click()
+  await page.getByRole("option", { name: /^Alpha/ }).click()
   await expect(page.getByRole("heading", { name: "Alpha" })).toBeVisible()
 
-  await page.getByRole("button", { name: "Sign out" }).click()
+  await signOut(page)
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fsettings%2Fworkspace$/)
   await expect(
     page.getByRole("link", { name: "Continue with Google" })

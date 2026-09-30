@@ -1,5 +1,7 @@
 import { type Browser, expect, type Page, test } from "@playwright/test"
 import {
+  choose,
+  chooseMany,
   collectErrors,
   createWorkspace,
   expectNoAxeViolations,
@@ -51,7 +53,7 @@ test("assignee requests a change, manager approves, both get notified", async ({
   await create
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("Budget review")
-  await create.getByRole("checkbox", { name: member.who.name }).check()
+  await chooseMany(create, "Assignees", [member.who.name])
   await create.getByRole("button", { name: "Create task" }).click()
   await o
     .getByRole("dialog", { name: "Budget review" })
@@ -66,9 +68,7 @@ test("assignee requests a change, manager approves, both get notified", async ({
   await m.getByRole("link", { name: "Budget review" }).click()
   const drawer = m.getByRole("dialog", { name: "Budget review" })
   await expect(drawer).toContainText("Changes need approval")
-  await drawer
-    .getByRole("combobox", { name: "Status" })
-    .selectOption({ label: "In progress" })
+  await choose(drawer, "Status", "In progress")
   await m.getByRole("button", { name: "Request changes" }).click()
   const confirm = m.getByRole("alertdialog", {
     name: "Send your changes for approval?",
@@ -98,9 +98,10 @@ test("assignee requests a change, manager approves, both get notified", async ({
   await m.getByRole("button", { name: "Mark all as read" }).click()
   await expect(m.getByText("All caught up")).toBeVisible()
   await m.getByRole("tab", { name: "Unread" }).click()
-  await expect(m.getByText("No unread notifications.")).toBeVisible()
+  await expect(m.getByText(/No unread notifications/)).toBeVisible()
 
-  // Settings: turn off status changes.
+  // Settings (now under Settings → Notifications): turn off status changes.
+  await m.getByRole("button", { name: "Notification settings" }).click()
   const status = m.getByRole("checkbox", { name: /Status changes/ })
   await status.uncheck()
   await m.reload()

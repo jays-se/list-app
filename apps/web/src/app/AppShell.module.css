@@ -1,80 +1,93 @@
 .shell {
+  --nav-collapsed: 56px;
+  --nav-expanded: 232px;
+  --topbar: 52px;
   display: grid;
   min-height: 100vh;
-  grid-template-rows: auto auto 1fr;
+  grid-template-columns: var(--nav-collapsed) minmax(0, 1fr);
+  grid-template-rows: var(--topbar) minmax(0, 1fr);
+  grid-template-areas:
+    "top top"
+    "nav body";
+  background: var(--colorNeutralBackground2);
+  transition: grid-template-columns var(--durationNormal) var(--curveEasyEase);
+}
+.expanded {
+  grid-template-columns: var(--nav-expanded) minmax(0, 1fr);
 }
 
-.header {
-  display: flex;
+.skip {
+  position: absolute;
+  top: var(--spacingS);
+  left: var(--spacingS);
+  z-index: 30;
+  padding: var(--spacingS) var(--spacingM);
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground1);
+  color: var(--colorBrandForeground1);
+  transform: translateY(-200%);
+}
+.skip:focus {
+  transform: none;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  grid-area: top;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 560px) minmax(0, 1fr);
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--spacingM) var(--spacingL);
-  min-height: 48px;
-  padding: 0 var(--spacingL);
+  gap: var(--spacingM);
+  padding: 0 var(--spacingM) 0 var(--spacingS);
   border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
   background: var(--colorNeutralBackground1);
 }
 
+.start,
+.end {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingS);
+  min-width: 0;
+}
+.end {
+  justify-content: flex-end;
+}
+.center {
+  min-width: 0;
+}
+
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacingS);
+  padding: var(--spacingXS);
+  border-radius: var(--borderRadiusMedium);
   color: var(--colorNeutralForeground1);
   font-size: var(--fontSizeBase400);
   font-weight: var(--fontWeightBold);
   text-decoration: none;
 }
-
-.nav {
-  display: flex;
-  flex: 1;
-  gap: var(--spacingXS);
-}
-
-.navLink {
-  padding: var(--spacingXS) var(--spacingS);
+.logo {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
   border-radius: var(--borderRadiusMedium);
-  color: var(--colorNeutralForeground2);
-  text-decoration: none;
-}
-.navLink:hover {
-  background: var(--colorSubtleBackgroundHover);
-  color: var(--colorNeutralForeground1);
-}
-.active {
-  color: var(--colorBrandForeground1);
-  font-weight: var(--fontWeightSemibold);
-}
-
-.badge {
-  display: inline-block;
-  min-width: 18px;
-  margin-left: var(--spacingXS);
-  padding: 0 var(--spacingXS);
-  border-radius: var(--borderRadiusCircular);
   background: var(--colorBrandBackground);
   color: var(--colorNeutralForegroundOnBrand);
-  font-size: var(--fontSizeBase100);
-  font-weight: var(--fontWeightSemibold);
-  line-height: 18px;
-  text-align: center;
+  font-size: var(--fontSizeBase300);
 }
 
-.user {
-  display: flex;
-  align-items: center;
-  gap: var(--spacingS);
+.scrim {
+  display: none;
 }
 
-.userName {
-  max-width: 16ch;
-  overflow: hidden;
-  color: var(--colorNeutralForeground2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 720px) {
-  .userName {
-    display: none;
-  }
+.body {
+  grid-area: body;
+  min-width: 0;
 }
 
 .banner {
@@ -85,7 +98,48 @@
 
 .main {
   width: 100%;
-  max-width: 1120px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: var(--spacingXXL) var(--spacingL);
+  padding: var(--spacingXXL) var(--spacingXXL);
+  box-sizing: border-box;
+}
+.main:focus {
+  outline: none;
+}
+
+@media (max-width: 1024px) {
+  .brandText,
+  .createText {
+    display: none;
+  }
+  .topbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .shell,
+  .expanded {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "top"
+      "body";
+  }
+  .main {
+    padding: var(--spacingL) var(--spacingM);
+  }
+  .scrim {
+    position: fixed;
+    inset: var(--topbar) 0 0;
+    z-index: 8;
+    display: block;
+    border: none;
+    background: var(--colorBackgroundOverlay);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
 }

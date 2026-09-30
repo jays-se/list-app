@@ -1,99 +1,109 @@
-import { useAction, useBridgeStatus, useView } from "@app/bridge"
-import { Avatar, Button, cx } from "@app/ui-kit"
-import { NavLink, Outlet } from "react-router"
+import { useBridgeStatus } from "@app/bridge"
+import { AddIcon, Button, cx, IconButton, NavigationIcon } from "@app/ui-kit"
+import { useEffect, useState } from "react"
+import { NavLink, Outlet, useLocation, useSearchParams } from "react-router"
 import { WorkspaceSwitcher } from "../features/workspace/WorkspaceSwitcher.tsx"
+import { AccountMenu } from "./AccountMenu.tsx"
 import styles from "./AppShell.module.css"
-import { ThemeSwitcher } from "./ThemeSwitcher.tsx"
+import { GlobalSearch } from "./GlobalSearch.tsx"
+import { loadNavExpanded, saveNavExpanded } from "./nav-pref.ts"
+import { SideNav } from "./SideNav.tsx"
+import { TaskHosts } from "./TaskHosts.tsx"
 
+const NAV_ID = "app-nav"
+
+/**
+ * Top bar (menu, workspace, search, create, account) over a left nav
+ * strip that the menu button expands. On phones the nav is an overlay.
+ */
 export function AppShell() {
-  return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <NavLink to="/" className={cx(styles.brand)}>
-          List
-        </NavLink>
-        <WorkspaceSwitcher />
-        <nav aria-label="Primary" className={styles.nav}>
-          <NavLink to="/" end className={navClass}>
-            Dashboard
-          </NavLink>
-          <NavLink to="/tasks" className={navClass}>
-            Tasks
-          </NavLink>
-          <NavLink to="/calendar" className={navClass}>
-            Calendar
-          </NavLink>
-          <NavLink to="/capture" className={navClass}>
-            Capture
-          </NavLink>
-          <NavLink to="/docs" className={navClass}>
-            Docs
-          </NavLink>
-          <NavLink to="/clients" className={navClass}>
-            Clients
-          </NavLink>
-          <InboxLink />
-          <NavLink to="/settings/workspace" className={navClass}>
-            Settings
-          </NavLink>
-          {import.meta.env.DEV && (
-            <NavLink to="/_design" className={navClass}>
-              Design system
-            </NavLink>
-          )}
-        </nav>
-        <ThemeSwitcher />
-        <UserMenu />
-      </header>
-      <WorkerStatusBanner />
-      <main className={styles.main}>
-        <Outlet />
-      </main>
-    </div>
-  )
-}
+  const [expanded, setExpanded] = useState(loadNavExpanded) // UI preference
+  const [mobileOpen, setMobileOpen] = useState(false) // ephemeral
+  const [, setSearch] = useSearchParams()
+  const { pathname } = useLocation()
 
-function navClass({ isActive }: { isActive: boolean }) {
-  return cx(styles.navLink, isActive && styles.active)
-}
+  // Close the phone overlay after navigating.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per route
+  useEffect(() => setMobileOpen(false), [pathname])
 
-/** Polls with the inbox (20 s); the count comes from the worker. */
-function InboxLink() {
-  const badge = useView("inbox.badge", {}).data
+  const toggle = () => {
+    if (window.matchMedia?.("(max-width: 720px)").matches) {
+      setMobileOpen((o) => !o)
+      return
+    }
+    setExpanded((e) => {
+      saveNavExpanded(!e)
+      return !e
+    })
+  }
+  const open = expanded || mobileOpen
+
   return (
-    <NavLink
-      to="/inbox"
-      className={navClass}
-      aria-label={badge?.label ?? "Inbox"}
-    >
-      Inbox
-      {badge?.badgeText && (
-        <span className={styles.badge} aria-hidden="true">
-          {badge.badgeText}
-        </span>
+    <div
+      className={cx(
+        styles.shell,
+        expanded && styles.expanded,
+        mobileOpen && styles.mobileOpen
       )}
-    </NavLink>
-  )
-}
-
-function UserMenu() {
-  const session = useView("session.current", {})
-  const logout = useAction("auth.logout")
-  const user = session.data?.user
-  if (!user) return null
-  return (
-    <div className={styles.user}>
-      <Avatar name={user.name} image={user.image ?? undefined} size={24} />
-      <span className={styles.userName}>{user.name}</span>
-      <Button
-        appearance="subtle"
-        size="small"
-        disabled={logout.pending}
-        // The session guard redirects to /login once the worker reports "anonymous".
-        onClick={() => logout.run({}).catch(() => {})}
-      >
-        Sign out
-      </Button>
+    >
+      <a href="#main" className={styles.skip}>
+        Skip to content
+      </a>
+      <header className={styles.topbar}>
+        <div className={styles.start}>
+          <IconButton
+            appearance="subtle"
+            icon={<NavigationIcon />}
+            aria-label={open ? "Collapse navigation" : "Expand navigation"}
+            aria-expanded={open}
+            aria-controls={NAV_ID}
+            onClick={toggle}
+          />
+          <NavLink to="/" className={cx(styles.brand)} aria-label="List home">
+            <span className={styles.logo} aria-hidden="true">
+              L
+            </span>
+            <span className={styles.brandText}>List</span>
+          </NavLink>
+          <WorkspaceSwitcher />
+        </div>
+        <div className={styles.center}>
+          <GlobalSearch />
+        </div>
+        <div className={styles.end}>
+          <Button
+            appearance="primary"
+            icon={<AddIcon />}
+            className={styles.create}
+            onClick={() =>
+              setSearch((s) => {
+                const next = new URLSearchParams(s)
+                next.set("create", "1")
+                return next
+              })
+            }
+          >
+            <span className={styles.createText}>Create</span>
+          </Button>
+          <AccountMenu />
+        </div>
+      </header>
+      <SideNav id={NAV_ID} expanded={expanded} mobileOpen={mobileOpen} />
+      {mobileOpen && (
+        <button
+          type="button"
+          className={styles.scrim}
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      <div className={styles.body}>
+        <WorkerStatusBanner />
+        <main id="main" className={styles.main} tabIndex={-1}>
+          <Outlet />
+        </main>
+      </div>
+      <TaskHosts />
     </div>
   )
 }

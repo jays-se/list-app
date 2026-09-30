@@ -44,6 +44,10 @@ export function useModal(
       onRequestClose()
     }
     const onKey = (e: KeyboardEvent) => {
+      // An open dropdown/menu inside the dialog handles its own Esc (this
+      // native listener runs before React's handlers can stop it).
+      const target = e.target as Element | null
+      if (target?.closest?.('[aria-expanded="true"], [data-popover]')) return
       if (e.key === "Escape") {
         e.preventDefault()
         onRequestClose()

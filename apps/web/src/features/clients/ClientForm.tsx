@@ -4,7 +4,7 @@ import type {
   OptionVM,
   ProtocolError,
 } from "@app/protocol"
-import { Field, Input, Select, Textarea } from "@app/ui-kit"
+import { Dropdown, Field, Input, Swatch, Textarea } from "@app/ui-kit"
 import styles from "./Clients.module.css"
 
 const fieldError = (e: ProtocolError | undefined, f: string) =>
@@ -48,16 +48,14 @@ export function ClientForm(props: {
           />
         </Field>
         <Field label="Color">
-          <Select
+          <Dropdown
             value={draft.color}
-            onChange={(e) => set("color", e.target.value as LabelColorKey)}
-          >
-            {colorOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+            options={colorOptions.map((o) => ({
+              ...o,
+              media: <Swatch color={o.value} />,
+            }))}
+            onChange={(v) => set("color", v as LabelColorKey)}
+          />
         </Field>
       </div>
       <Field label="Notes">
