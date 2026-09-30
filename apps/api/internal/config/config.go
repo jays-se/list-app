@@ -45,6 +45,16 @@ type Config struct {
 	SessionSecret []byte
 	SessionTTL    time.Duration
 	CookieSecure  bool
+
+	// Blob storage (ADR-0022): "local" (disk under BlobDir) or "s3".
+	BlobDriver  string
+	BlobDir     string
+	S3Endpoint  string
+	S3Region    string
+	S3Bucket    string
+	S3AccessKey string
+	S3SecretKey string
+	S3PathStyle bool
 }
 
 // Load reads configuration using getenv (os.Getenv in production, a map in tests).
@@ -118,6 +128,25 @@ func Load(getenv func(string) string) (Config, error) {
 		// Dev/test: a per-process secret; in-flight logins don't survive restarts.
 		cfg.SessionSecret = make([]byte, 32)
 		_, _ = rand.Read(cfg.SessionSecret)
+	}
+
+	cfg.BlobDriver = get("BLOB_DRIVER", "local")
+	cfg.BlobDir = get("BLOB_DIR", "data/blobs")
+	switch cfg.BlobDriver {
+	case "local":
+	case "s3":
+		cfg.S3Endpoint, cfg.S3Bucket = getenv("S3_ENDPOINT"), getenv("S3_BUCKET")
+		cfg.S3Region = get("S3_REGION", "us-east-1")
+		cfg.S3AccessKey, cfg.S3SecretKey = getenv("S3_ACCESS_KEY"), getenv("S3_SECRET_KEY")
+		cfg.S3PathStyle = get("S3_PATH_STYLE", "true") == "true"
+		if cfg.S3Endpoint == "" || cfg.S3Bucket == "" || cfg.S3AccessKey == "" || cfg.S3SecretKey == "" {
+			return Config{}, fmt.Errorf("config: BLOB_DRIVER=s3 needs S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY")
+		}
+		if _, err := url.Parse(cfg.S3Endpoint); err != nil {
+			return Config{}, fmt.Errorf("config: S3_ENDPOINT: %w", err)
+		}
+	default:
+		return Config{}, fmt.Errorf("config: BLOB_DRIVER must be local or s3, got %q", cfg.BlobDriver)
 	}
 
 	if cfg.Env == EnvProd {

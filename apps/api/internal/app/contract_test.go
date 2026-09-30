@@ -38,7 +38,8 @@ func TestContractMatchesOpenAPI(t *testing.T) {
 					switch method {
 					case "get", "post", "put", "patch", "delete":
 						var op struct {
-							DevOnly bool `yaml:"x-dev-only"`
+							DevOnly   bool `yaml:"x-dev-only"`
+							BlobLocal bool `yaml:"x-blob-local"`
 						}
 						if err := node.Decode(&op); err != nil {
 							t.Fatal(err)
@@ -46,6 +47,7 @@ func TestContractMatchesOpenAPI(t *testing.T) {
 						if op.DevOnly && provider != config.AuthProviderDev {
 							continue
 						}
+						_ = op.BlobLocal // the test config uses the local driver, so these are registered
 						documented = append(documented, strings.ToUpper(method)+" "+path)
 					}
 				}
@@ -55,12 +57,16 @@ func TestContractMatchesOpenAPI(t *testing.T) {
 			cfg, err := config.Load(func(k string) string {
 				return map[string]string{
 					"AUTH_PROVIDER": provider, "GOOGLE_CLIENT_ID": "id", "GOOGLE_CLIENT_SECRET": "secret",
+					"BLOB_DIR": t.TempDir(),
 				}[k]
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, router := app.New(cfg, app.Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), StartedAt: time.Now()})
+			_, router, err := app.New(cfg, app.Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), StartedAt: time.Now()})
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got, want := strings.Join(router.Routes(), "\n"), strings.Join(documented, "\n"); got != want {
 				t.Fatalf("OpenAPI and routes differ\nopenapi:\n  %s\nroutes:\n  %s",
 					strings.ReplaceAll(want, "\n", "\n  "), strings.ReplaceAll(got, "\n", "\n  "))

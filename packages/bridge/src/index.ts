@@ -12,6 +12,7 @@ export {
   useAction,
   useBridge,
   useBridgeStatus,
+  useUploadProgress,
   useView,
 } from "./react.tsx"
 export { createWorkerBackend } from "./worker-backend.ts"

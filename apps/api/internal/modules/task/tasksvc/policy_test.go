@@ -21,11 +21,17 @@ func TestPolicy(t *testing.T) {
 		"owner":    {true, true, true, true, false, true},
 		"assignee": {true, false, false, false, false, false},
 		"viewer":   {true, false, false, false, false, false},
+		// ADR-0021: a workspace owner manages every task.
+		"admin": {true, true, true, true, true, true},
 	}
 	for user, expected := range want {
 		for i, act := range actions {
 			t.Run(user+"/"+act.name, func(t *testing.T) {
-				err := Authorize(a, user, act.action)
+				access := a
+				if user == "admin" {
+					access.WorkspaceRole = "OWNER"
+				}
+				err := Authorize(access, user, act.action)
 				if got := err == nil; got != expected[i] {
 					t.Fatalf("allowed = %v, want %v", got, expected[i])
 				}
@@ -39,5 +45,17 @@ func TestPolicy(t *testing.T) {
 	v := Evaluate(a, "owner")
 	if !v.CanManage || v.CanManageOwners || !v.IsAssignee {
 		t.Fatalf("owner viewer flags: %+v", v)
+	}
+}
+
+func TestWrapKeepsNilAndKinds(t *testing.T) {
+	if err := wrap("op", nil); err != nil {
+		t.Fatalf("wrap(nil) = %v", err)
+	}
+	if err := wrap("op", ErrNotFound); err != ErrNotFound {
+		t.Fatalf("apperr kinds must pass through, got %v", err)
+	}
+	if err := wrap("op", errors.New("boom")); err == nil || err.Error() != "tasksvc: op: boom" {
+		t.Fatalf("wrap(other) = %v", err)
 	}
 }

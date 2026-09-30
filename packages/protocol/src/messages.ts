@@ -1,4 +1,5 @@
 import type { ProtocolError } from "./errors.ts"
+import type { UploadProgress } from "./views/tasks.ts"
 
 /**
  * Main ↔ Worker messages (ADR-0007). Everything here must survive
@@ -60,6 +61,7 @@ export type Push =
       data: { subId: string; state: ViewState; dataUnchanged?: true }
     }
   | { kind: "push"; topic: "session.expired"; data: Record<string, never> }
+  | { kind: "push"; topic: "upload.progress"; data: UploadProgress }
   | { kind: "push"; topic: "fatal"; data: { message: string } }
 
 export type Reply =

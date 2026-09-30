@@ -25,3 +25,13 @@
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
 }
+
+.details {
+  display: grid;
+  gap: var(--spacingL);
+}
+
+.parent {
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+}

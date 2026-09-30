@@ -3,6 +3,7 @@ import { defineView } from "../runtime.ts"
 import { todayISO } from "../shared/dates.ts"
 import { membersQuery } from "../workspace/members.queries.ts"
 import {
+  clientsQuery,
   labelsQuery,
   normalizeFilter,
   taskDetailQuery,
@@ -16,13 +17,15 @@ export const taskViews = {
       tasks: taskListQuery(ctx.api, normalizeFilter(params)),
       members: membersQuery(ctx.api),
       labels: labelsQuery(ctx.api),
+      clients: clientsQuery(ctx.api),
     }),
-    compute: ({ tasks, members, labels }, params, ctx) =>
+    compute: ({ tasks, members, labels, clients }, params, ctx) =>
       toTaskListVM(
         tasks,
         normalizeFilter(params),
         members,
         labels.labels,
+        clients,
         todayISO(ctx.now()),
         ctx.locale
       ),
@@ -33,13 +36,16 @@ export const taskViews = {
       task: taskDetailQuery(ctx.api, params.taskId),
       members: membersQuery(ctx.api),
       labels: labelsQuery(ctx.api),
+      clients: clientsQuery(ctx.api),
     }),
-    compute: ({ task, members, labels }, _params, ctx) =>
+    compute: ({ task, members, labels, clients }, _params, ctx) =>
       toTaskDetailVM(
         task,
         members,
         labels.labels,
+        clients,
         todayISO(ctx.now()),
+        ctx.now(),
         ctx.locale
       ),
   }),
@@ -48,8 +54,9 @@ export const taskViews = {
     queries: (_params: Record<string, never>, ctx) => ({
       members: membersQuery(ctx.api),
       labels: labelsQuery(ctx.api),
+      clients: clientsQuery(ctx.api),
     }),
-    compute: ({ members, labels }, _params, ctx) =>
-      toFormOptionsVM(members, labels.labels, todayISO(ctx.now())),
+    compute: ({ members, labels, clients }, _params, ctx) =>
+      toFormOptionsVM(members, labels.labels, clients, todayISO(ctx.now())),
   }),
 }

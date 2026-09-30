@@ -17,6 +17,8 @@ type CreateTaskReq struct {
 	DueDate     *string  `json:"dueDate"`
 	AssigneeIDs []string `json:"assigneeIds"`
 	LabelIDs    []string `json:"labelIds"`
+	ClientID    *string  `json:"clientId"`
+	ParentID    *string  `json:"parentId"`
 }
 
 func (r CreateTaskReq) ToJSON() ([]byte, error) { return json.Marshal(r) }
@@ -30,6 +32,7 @@ type UpdateTaskReq struct {
 	StartDate   apiserver.Optional[string]  `json:"startDate"`
 	EndDate     apiserver.Optional[string]  `json:"endDate"`
 	DueDate     apiserver.Optional[*string] `json:"dueDate"`
+	ClientID    apiserver.Optional[*string] `json:"clientId"`
 }
 
 func (r UpdateTaskReq) ToJSON() ([]byte, error) { return json.Marshal(r) }

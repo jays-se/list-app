@@ -39,6 +39,7 @@ export default defineConfig({
         DATABASE_URL,
         PUBLIC_BASE_URL: WEB_ORIGIN,
         LOG_LEVEL: "warn",
+        BLOB_DIR: "data/e2e-blobs",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,

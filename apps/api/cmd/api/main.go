@@ -60,7 +60,11 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config) error {
 		log.Warn("database_not_configured", "hint", "set DATABASE_URL; /readyz reports not_ready and auth/workspace routes fail")
 	}
 	log.Info("auth_configured", "provider", cfg.AuthProvider, "public_base_url", cfg.PublicBaseURL)
-	handler, _ := app.New(cfg, opts)
+	log.Info("blob_storage_configured", "driver", cfg.BlobDriver)
+	handler, _, err := app.New(cfg, opts)
+	if err != nil {
+		return err
+	}
 	return apiserver.Serve(ctx, log, cfg.HTTPAddr, handler, cfg.ShutdownTimeout)
 }
 

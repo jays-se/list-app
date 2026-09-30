@@ -1,0 +1,143 @@
+.section {
+  display: grid;
+  gap: var(--spacingS);
+  padding-top: var(--spacingL);
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacingS);
+  margin: 0;
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.count {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  font-weight: var(--fontWeightRegular);
+}
+
+.list {
+  display: grid;
+  gap: var(--spacingXS);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingS);
+  min-height: 32px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.done {
+  color: var(--colorNeutralForeground3);
+  text-decoration: line-through;
+}
+
+.muted {
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+}
+
+.error {
+  margin: 0;
+  color: var(--colorStatusDangerForeground1);
+}
+
+.inline {
+  display: flex;
+  gap: var(--spacingS);
+  align-items: flex-end;
+}
+.inline > :first-child {
+  flex: 1;
+}
+
+.comment {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacingXS) var(--spacingS);
+  padding: var(--spacingS) 0;
+}
+
+.commentHead {
+  display: flex;
+  gap: var(--spacingS);
+  align-items: baseline;
+}
+
+.commentBody {
+  grid-column: 2;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mention {
+  padding: 0 var(--spacingXXS);
+  border-radius: var(--borderRadiusSmall);
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.fileLink {
+  overflow: hidden;
+  color: var(--colorBrandForeground1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress {
+  width: 120px;
+  height: 6px;
+  accent-color: var(--colorBrandBackground);
+}
+
+.timeline {
+  display: grid;
+  gap: var(--spacingM);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacingS);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage {
+  padding: var(--spacingXS) var(--spacingS);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  font-size: var(--fontSizeBase200);
+}
+.current {
+  border-color: var(--colorBrandStroke1);
+}
+
+.picker {
+  width: 160px;
+}
+
+.mentionPicker {
+  width: 200px;
+}

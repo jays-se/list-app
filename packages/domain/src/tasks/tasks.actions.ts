@@ -50,6 +50,7 @@ export const taskActions = {
         dueDate: nullIfEmpty(draft.dueDate),
         assigneeIds: draft.assigneeIds,
         labelIds: draft.labelIds,
+        clientId: nullIfEmpty(draft.clientId),
       })
     )
     ctx.client.setQueryData(taskKeys.detail(task.id), task)

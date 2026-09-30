@@ -610,7 +610,9 @@ Web Push, SSE live updates, rich-text docs, task embeds in docs, search, paginat
   | 0017 | OIDC via go-oidc, plus a built-in dev identity provider |
   | 0018 | In-house OpenAPI → TS types and decoders |
   | 0019 | Protocol additions: VALIDATION, `resetData`, `skipAuthRedirect` |
-  | 0020 | Task permission policy |
+  | 0020 | Task permission policy (superseded in part by 0021) |
+  | 0021 | Workspace owners can manage every task |
+  | 0022 | Blob storage: local driver and in-house S3 SigV4 driver |
 - `docs/`:
   - `architecture.md`, with diagrams from §3 and §6
   - `conventions.md`: naming, files, error handling, VM naming `*.vm.ts`

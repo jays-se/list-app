@@ -1,6 +1,8 @@
 import type { Bridge } from "@app/bridge"
 import { createBrowserRouter, type RouteObject } from "react-router"
 import { LoginPage } from "../features/auth/LoginPage.tsx"
+import { ClientDetailPage } from "../features/clients/ClientDetailPage.tsx"
+import { ClientsPage } from "../features/clients/ClientsPage.tsx"
 import { HomePage } from "../features/system/HomePage.tsx"
 import { listParams, TasksPage } from "../features/tasks/TasksPage.tsx"
 import { OnboardingPage } from "../features/workspace/OnboardingPage.tsx"
@@ -50,6 +52,25 @@ export function createAppRoutes(bridge: Bridge): RouteObject[] {
                 bridge.prefetch("tasks.list", listParams(search))
                 const taskId = search.get("task")
                 if (taskId) bridge.prefetch("tasks.detail", { taskId })
+                return null
+              },
+            },
+            {
+              path: "/clients",
+              element: <ClientsPage />,
+              loader: () => {
+                bridge.prefetch("clients.list", {})
+                return null
+              },
+            },
+            {
+              path: "/clients/:clientId",
+              element: <ClientDetailPage />,
+              loader: ({ params }) => {
+                if (params.clientId)
+                  bridge.prefetch("clients.detail", {
+                    clientId: params.clientId,
+                  })
                 return null
               },
             },

@@ -58,6 +58,15 @@ export interface TaskRowVM {
   /** "Ada, Grace +2" style summary for compact layouts. */
   assigneesText: string
   labels: LabelVM[]
+  client: { name: string; color: LabelColorKey } | null
+  /** For subtasks: "Subtask of Launch". */
+  parentText: string | null
+  /** e.g. "2/3 subtasks · 1/4 checklist"; null when there is neither. */
+  progressText: string | null
+  commentCount: number
+  attachmentCount: number
+  /** e.g. "2 comments · 1 file"; null when neither. */
+  activityText: string | null
 }
 
 export interface TaskGroupVM {
@@ -73,18 +82,21 @@ export interface TaskListParams {
   mine?: string
   assigneeId?: string
   labelId?: string
+  clientId?: string
 }
 
 export interface TaskFiltersVM {
   statusOptions: OptionVM[]
   assigneeOptions: OptionVM[]
   labelOptions: OptionVM[]
+  clientOptions: OptionVM[]
   /** The filters actually applied (invalid values dropped). */
   applied: {
     status: string
     mine: boolean
     assigneeId: string
     labelId: string
+    clientId: string
   }
   activeCount: number
 }
@@ -111,6 +123,8 @@ export interface TaskDraft {
   assigneeIds: string[]
   labelIds: string[]
   ownerIds: string[]
+  /** "" = no client. */
+  clientId: string
 }
 
 export interface TaskFormOptionsVM {
@@ -118,6 +132,7 @@ export interface TaskFormOptionsVM {
   priorityOptions: OptionVM<PriorityKey>[]
   members: PersonVM[]
   labels: LabelVM[]
+  clientOptions: OptionVM[]
   /** A fresh draft: dates default to today. */
   defaults: TaskDraft
 }
@@ -146,6 +161,120 @@ export interface TaskDetailVM {
   options: TaskFormOptionsVM
   /** Members who can be owners (everyone but the creator). */
   ownerCandidates: PersonVM[]
+  client: { id: string; name: string; color: LabelColorKey } | null
+  parent: { id: string; title: string } | null
+  subtasks: SubtaskVM[]
+  subtasksText: string
+  /** Subtasks can't have subtasks (one level). */
+  canAddSubtask: boolean
+  checklist: ChecklistItemVM[]
+  checklistText: string
+  comments: CommentVM[]
+  attachments: AttachmentVM[]
+  attachmentsText: string
+  canAttach: boolean
+}
+
+export interface SubtaskVM {
+  id: string
+  title: string
+  statusLabel: string
+  isDone: boolean
+}
+
+export interface ChecklistItemVM {
+  id: string
+  title: string
+  done: boolean
+  assigneeId: string
+  assigneeName: string | null
+}
+
+/** Comment body split so mentions can be highlighted without parsing in React. */
+export interface CommentSegmentVM {
+  text: string
+  mention: boolean
+}
+
+export interface CommentVM {
+  id: string
+  authorName: string
+  authorImage: string | null
+  timeText: string
+  segments: CommentSegmentVM[]
+}
+
+export interface AttachmentVM {
+  id: string
+  filename: string
+  sizeText: string
+  metaText: string
+  downloadUrl: string
+}
+
+export interface HistoryItemVM {
+  id: string
+  actorName: string
+  actorImage: string | null
+  text: string
+  timeText: string
+}
+
+export interface StatusStageVM {
+  status: TaskStatusKey
+  label: string
+  durationText: string
+  isCurrent: boolean
+}
+
+export interface TaskHistoryVM {
+  items: HistoryItemVM[]
+  stages: StatusStageVM[]
+}
+
+export interface ClientDraft {
+  name: string
+  email: string
+  phone: string
+  color: LabelColorKey
+  notes: string
+}
+
+export interface ClientVM {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  color: LabelColorKey
+  notes: string | null
+  taskCountText: string
+}
+
+export interface ClientsVM {
+  clients: ClientVM[]
+  canDelete: boolean
+  colorOptions: OptionVM<LabelColorKey>[]
+  emptyText: string
+}
+
+export interface ClientDetailVM {
+  client: ClientVM
+  saved: ClientDraft
+  tasks: TaskRowVM[]
+  tasksText: string
+  canDelete: boolean
+  colorOptions: OptionVM<LabelColorKey>[]
+}
+
+/** Pushed while the worker uploads a file (topic "upload.progress"). */
+export interface UploadProgress {
+  taskId: string
+  uploadId: string
+  filename: string
+  /** 0–100. */
+  percent: number
+  state: "uploading" | "done" | "failed"
+  error?: string
 }
 
 export interface LabelsVM {

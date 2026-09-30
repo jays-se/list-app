@@ -1,8 +1,14 @@
 import { type ActionState, useAction, useView } from "@app/bridge"
 import type { TaskDetailVM, TaskDraft } from "@app/protocol"
-import { Button, ConfirmDialog, Drawer, Spinner } from "@app/ui-kit"
+import { Button, ConfirmDialog, Drawer, Spinner, Tabs } from "@app/ui-kit"
 import { useState } from "react"
+import { Link, useSearchParams } from "react-router"
 import { sameDraft } from "./draft.ts"
+import { ActivityTab } from "./sections/ActivityTab.tsx"
+import { AttachmentsSection } from "./sections/AttachmentsSection.tsx"
+import { ChecklistSection } from "./sections/ChecklistSection.tsx"
+import { CommentsSection } from "./sections/CommentsSection.tsx"
+import { SubtasksSection } from "./sections/SubtasksSection.tsx"
 import styles from "./TaskDetailDrawer.module.css"
 import { TaskForm } from "./TaskForm.tsx"
 import { TaskReadOnly } from "./TaskReadOnly.tsx"
@@ -24,6 +30,13 @@ export function TaskDetailDrawer({
   // null = showing saved values (they keep updating via polling).
   const [draft, setDraft] = useState<TaskDraft | null>(null)
   const [confirm, setConfirm] = useState<Confirm>(null)
+  const [tab, setTab] = useState<"details" | "activity">("details") // UI state
+  const [search] = useSearchParams()
+  const taskLink = (id: string) => {
+    const next = new URLSearchParams(search)
+    next.set("task", id)
+    return { search: `?${next}` }
+  }
   const vm = detail.data
   const dirty = Boolean(draft && vm && !sameDraft(draft, vm.saved))
   const conflict = save.error?.code === "HTTP_409"
@@ -91,33 +104,59 @@ export function TaskDetailDrawer({
             {remove.error.message}
           </p>
         )}
-        {vm?.mode === "manage" && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              void submit()
-            }}
-            noValidate
-          >
-            <TaskForm
-              draft={draft ?? vm.saved}
-              options={vm.options}
-              error={conflict ? undefined : save.error}
-              ownerCandidates={
-                vm.canManageOwners ? vm.ownerCandidates : undefined
-              }
-              onChange={(next) => {
-                setDraft(next)
-                if (!conflict) save.reset()
-              }}
-            />
-          </form>
-        )}
-        {vm?.mode === "view" && <TaskReadOnly vm={vm} />}
         {vm && (
-          <p className={styles.meta}>
-            {vm.createdText} · {vm.updatedText}
-          </p>
+          <Tabs
+            label="Task sections"
+            value={tab}
+            onChange={setTab}
+            items={[
+              { value: "details", label: "Details" },
+              { value: "activity", label: "Activity" },
+            ]}
+          >
+            {tab === "details" ? (
+              <div className={styles.details}>
+                {vm.parent && (
+                  <p className={styles.parent}>
+                    Subtask of{" "}
+                    <Link to={taskLink(vm.parent.id)}>{vm.parent.title}</Link>
+                  </p>
+                )}
+                {vm.mode === "manage" && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void submit()
+                    }}
+                    noValidate
+                  >
+                    <TaskForm
+                      draft={draft ?? vm.saved}
+                      options={vm.options}
+                      error={conflict ? undefined : save.error}
+                      ownerCandidates={
+                        vm.canManageOwners ? vm.ownerCandidates : undefined
+                      }
+                      onChange={(next) => {
+                        setDraft(next)
+                        if (!conflict) save.reset()
+                      }}
+                    />
+                  </form>
+                )}
+                {vm.mode === "view" && <TaskReadOnly vm={vm} />}
+                <SubtasksSection vm={vm} />
+                <ChecklistSection vm={vm} />
+                <AttachmentsSection vm={vm} />
+                <CommentsSection vm={vm} />
+                <p className={styles.meta}>
+                  {vm.createdText} · {vm.updatedText}
+                </p>
+              </div>
+            ) : (
+              <ActivityTab taskId={taskId} />
+            )}
+          </Tabs>
         )}
       </Drawer>
       <ConfirmDialog

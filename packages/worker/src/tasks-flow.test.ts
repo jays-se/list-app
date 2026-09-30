@@ -27,6 +27,12 @@ function fakeApi() {
     updatedAt: "2026-09-30T10:00:00Z",
     version: 1,
     viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+    client: null,
+    parent: null,
+    subtasks: [],
+    checklist: [],
+    comments: [],
+    attachments: [],
   }
   const json = (b: unknown, status = 200) => Response.json(b, { status })
   const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
@@ -50,6 +56,7 @@ function fakeApi() {
       })
     }
     if (path === "/labels") return json({ labels: [] })
+    if (path === "/clients") return json({ clients: [] })
     if (path === "/tasks/t1" && method === "GET") return json({ task })
     if (path === "/tasks/t1" && method === "PATCH") {
       if (headers.get("If-Match") !== `"${task.version}"`) {

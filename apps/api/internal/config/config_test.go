@@ -85,6 +85,8 @@ func TestLoadRejectsInvalid(t *testing.T) {
 		"prod with dev provider": with(prodOK, map[string]string{"AUTH_PROVIDER": "dev"}),
 		"prod without secret":    with(prodOK, map[string]string{"SESSION_SECRET": ""}),
 		"prod over http":         with(prodOK, map[string]string{"PUBLIC_BASE_URL": "http://list.example.com"}),
+		"unknown blob driver":    {"BLOB_DRIVER": "ftp"},
+		"s3 without settings":    {"BLOB_DRIVER": "s3"},
 	}
 	for name, values := range cases {
 		t.Run(name, func(t *testing.T) {

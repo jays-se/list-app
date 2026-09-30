@@ -16,11 +16,11 @@ This is a team tool for tasks, change-request approvals, docs, clients, labels, 
 
 ## Status
 
-Sprint 2 is complete (2026-09-30).
-- **Sprints 0–1 foundations:** sign-in and workspaces.
-- **Tasks:** list, filters, create, edit, owners, labels, the permission policy, and optimistic concurrency.
+Sprint 3 is complete (2026-09-30).
+- **Sprints 0–2:** foundations, sign-in and workspaces, tasks.
+- **Sprint 3:** clients, subtasks, checklist, comments with mentions, attachments (blob storage), and activity history.
 
-Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 3 (subtasks, checklist, comments, attachments, history, clients).
+Per-ticket status is in `docs/backlog/E*.md`. Next up is Sprint 4 (change requests, notifications, DUE reminders).
 
 ## Architecture in one screen
 

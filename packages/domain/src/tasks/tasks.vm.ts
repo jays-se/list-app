@@ -1,4 +1,10 @@
-import type { Label, MemberList, Task, TaskSummary } from "@app/api-client"
+import type {
+  ClientList,
+  Label,
+  MemberList,
+  Task,
+  TaskSummary,
+} from "@app/api-client"
 import type {
   LabelVM,
   PersonVM,
@@ -17,6 +23,12 @@ import {
   formatLongDate,
   formatRange,
 } from "../shared/dates.ts"
+import {
+  toAttachments,
+  toChecklist,
+  toComments,
+  toSubtasks,
+} from "./tasks.collab.vm.ts"
 import {
   CLOSED,
   PRIORITY_LABEL,
@@ -57,6 +69,20 @@ function assigneesText(people: PersonVM[]): string {
     : first.join(", ")
 }
 
+function activityText(c: TaskSummary["counts"]): string | null {
+  const parts: string[] = []
+  if (c.comments) parts.push(plural(c.comments, "comment"))
+  if (c.attachments) parts.push(plural(c.attachments, "file"))
+  return parts.length ? parts.join(" · ") : null
+}
+
+function progressText(c: TaskSummary["counts"]): string | null {
+  const parts: string[] = []
+  if (c.subtasks) parts.push(`${c.subtasksDone}/${c.subtasks} subtasks`)
+  if (c.checklist) parts.push(`${c.checklistDone}/${c.checklist} checklist`)
+  return parts.length ? parts.join(" · ") : null
+}
+
 export function toTaskRowVM(
   t: TaskSummary,
   today: string,
@@ -74,6 +100,12 @@ export function toTaskRowVM(
     assignees: t.assignees,
     assigneesText: assigneesText(t.assignees),
     labels: t.labels,
+    client: t.client ? { name: t.client.name, color: t.client.color } : null,
+    parentText: t.parent ? `Subtask of ${t.parent.title}` : null,
+    progressText: progressText(t.counts),
+    commentCount: t.counts.comments,
+    attachmentCount: t.counts.attachments,
+    activityText: activityText(t.counts),
   }
 }
 
@@ -82,6 +114,7 @@ export function toTaskListVM(
   filter: TaskFilter,
   members: MemberList,
   labels: Label[],
+  clients: ClientList,
   today: string,
   locale: string
 ): TaskListVM {
@@ -105,7 +138,8 @@ export function toTaskListVM(
   const activeCount =
     Number(Boolean(filter.status)) +
     Number(filter.mine || Boolean(filter.assigneeId)) +
-    Number(Boolean(filter.labelId))
+    Number(Boolean(filter.labelId)) +
+    Number(Boolean(filter.clientId))
   return {
     groups,
     totalText: plural(tasks.length, "task"),
@@ -124,6 +158,10 @@ export function toTaskListVM(
         { value: "", label: "Any label" },
         ...labels.map((l) => ({ value: l.id, label: l.name })),
       ],
+      clientOptions: [
+        { value: "", label: "Any client" },
+        ...clients.clients.map((c) => ({ value: c.id, label: c.name })),
+      ],
       applied: { ...filter },
       activeCount,
     },
@@ -141,6 +179,7 @@ function people(members: MemberList): PersonVM[] {
 export function toFormOptionsVM(
   members: MemberList,
   labels: Label[],
+  clients: ClientList,
   today: string
 ): TaskFormOptionsVM {
   return {
@@ -148,6 +187,10 @@ export function toFormOptionsVM(
     priorityOptions,
     members: people(members),
     labels: labels as LabelVM[],
+    clientOptions: [
+      { value: "", label: "No client" },
+      ...clients.clients.map((c) => ({ value: c.id, label: c.name })),
+    ],
     defaults: {
       title: "",
       description: "",
@@ -159,6 +202,7 @@ export function toFormOptionsVM(
       assigneeIds: [],
       labelIds: [],
       ownerIds: [],
+      clientId: "",
     },
   }
 }
@@ -177,6 +221,7 @@ export function draftFromTask(t: Task): TaskDraft {
     assigneeIds: sortedIds(t.assignees),
     labelIds: sortedIds(t.labels),
     ownerIds: sortedIds(t.owners),
+    clientId: t.client?.id ?? "",
   }
 }
 
@@ -184,10 +229,12 @@ export function toTaskDetailVM(
   t: Task,
   members: MemberList,
   labels: Label[],
+  clients: ClientList,
   today: string,
+  now: number,
   locale: string
 ): TaskDetailVM {
-  const options = toFormOptionsVM(members, labels, today)
+  const options = toFormOptionsVM(members, labels, clients, today)
   return {
     id: t.id,
     title: t.title,
@@ -208,5 +255,12 @@ export function toTaskDetailVM(
     saved: draftFromTask(t),
     options,
     ownerCandidates: options.members.filter((p) => p.id !== t.createdBy.id),
+    client: t.client,
+    parent: t.parent ? { id: t.parent.id, title: t.parent.title } : null,
+    ...toSubtasks(t),
+    canAddSubtask: t.viewer.canManage && !t.parent,
+    ...toChecklist(t),
+    comments: toComments(t, now, locale),
+    ...toAttachments(t, now, locale),
   }
 }

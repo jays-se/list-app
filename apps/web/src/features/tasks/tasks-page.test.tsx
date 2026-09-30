@@ -33,6 +33,12 @@ function makeTask(over: Record<string, unknown> = {}) {
     updatedAt: "2026-09-30T10:00:00Z",
     version: 1,
     viewer: { canManage: true, canManageOwners: true, isAssignee: false },
+    client: null,
+    parent: null,
+    subtasks: [],
+    checklist: [],
+    comments: [],
+    attachments: [],
     ...over,
   }
 }
@@ -82,6 +88,8 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
             },
           ],
         })
+      case "GET /clients":
+        return json({ clients: [] })
       case "GET /labels":
         return json({ labels: [{ id: "l1", name: "Bug", color: "red" }] })
       case "GET /tasks": {
@@ -90,9 +98,23 @@ function fakeApi(opts: { canManage?: boolean } = {}) {
           owners: _o,
           description: _d,
           createdAt: _c,
-          ...summary
+          subtasks: _s,
+          checklist: _k,
+          comments: _m,
+          attachments: _a,
+          ...rest
         } = task
-        return json({ tasks: url.includes("status=DONE") ? [] : [summary] })
+        const counts = {
+          subtasks: 0,
+          subtasksDone: 0,
+          checklist: 0,
+          checklistDone: 0,
+          comments: 0,
+          attachments: 0,
+        }
+        return json({
+          tasks: url.includes("status=DONE") ? [] : [{ ...rest, counts }],
+        })
       }
       case "GET /tasks/t1":
         return json({ task })
@@ -204,7 +226,11 @@ describe("tasks page", () => {
     expect(
       within(drawer).queryByRole("button", { name: "Save changes" })
     ).toBeNull()
-    expect(within(drawer).queryByRole("textbox")).toBeNull()
+    expect(within(drawer).queryByRole("textbox", { name: /Title/ })).toBeNull()
+    // Anyone in the workspace can still comment.
+    expect(
+      within(drawer).getByRole("textbox", { name: "Add a comment" })
+    ).toBeTruthy()
   })
 
   it("validates a new task in the worker before sending", async () => {

@@ -47,7 +47,15 @@ function TaskRow({
         <span className={styles.main}>
           <span className={styles.title}>{task.title}</span>
           <span className={styles.meta}>
+            {task.parentText && <span>{task.parentText}</span>}
             <span>{task.dateRangeText}</span>
+            {task.client && (
+              <LabelChip color={task.client.color} size="small">
+                {task.client.name}
+              </LabelChip>
+            )}
+            {task.progressText && <span>{task.progressText}</span>}
+            {task.activityText && <span>{task.activityText}</span>}
             {task.labels.map((l) => (
               <LabelChip key={l.id} color={l.color} size="small">
                 {l.name}

@@ -208,3 +208,39 @@ describe("Drawer and ConfirmDialog", () => {
     expect(screen.getByText("Design")).toBeTruthy()
   })
 })
+
+describe("Tabs", () => {
+  it("follows the APG pattern: roles, selection, arrow keys", async () => {
+    const { Tabs } = await import("./Tabs/Tabs.tsx")
+    const onChange = vi.fn()
+    render(
+      <Tabs
+        label="Task"
+        value="a"
+        onChange={onChange}
+        items={[
+          { value: "a", label: "Details" },
+          { value: "b", label: "Activity" },
+        ]}
+      >
+        <p>panel</p>
+      </Tabs>
+    )
+    const tabs = screen.getAllByRole("tab")
+    expect(tabs.map((t) => t.getAttribute("aria-selected"))).toEqual([
+      "true",
+      "false",
+    ])
+    expect(tabs[1]?.getAttribute("tabindex")).toBe("-1")
+    expect(screen.getByRole("tabpanel", { name: "Details" }).textContent).toBe(
+      "panel"
+    )
+    fireEvent.keyDown(screen.getByRole("tablist", { name: "Task" }), {
+      key: "ArrowRight",
+    })
+    expect(onChange).toHaveBeenCalledWith("b")
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "End" })
+    fireEvent.click(tabs[0] as HTMLElement)
+    expect(onChange).toHaveBeenLastCalledWith("a")
+  })
+})

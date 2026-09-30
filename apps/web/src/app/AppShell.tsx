@@ -20,6 +20,9 @@ export function AppShell() {
           <NavLink to="/tasks" className={navClass}>
             Tasks
           </NavLink>
+          <NavLink to="/clients" className={navClass}>
+            Clients
+          </NavLink>
           <NavLink to="/settings/workspace" className={navClass}>
             Settings
           </NavLink>

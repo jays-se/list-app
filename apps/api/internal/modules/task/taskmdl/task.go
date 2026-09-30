@@ -42,6 +42,14 @@ type Task struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Version     int
+	Client      *ClientRef
+	Parent      *TaskRef
+	Counts      Counts
+	// Loaded for the detail view only.
+	Subtasks    []TaskRef
+	Checklist   []ChecklistItem
+	Comments    []Comment
+	Attachments []Attachment
 }
 
 func (t Task) ToJSON() ([]byte, error) { return json.Marshal(t) }
@@ -60,4 +68,6 @@ type Filter struct {
 	Status     string
 	AssigneeID string
 	LabelID    string
+	ClientID   string
+	ParentID   string
 }

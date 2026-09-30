@@ -19,15 +19,17 @@ const (
 	ActionDelete
 )
 
-// Access is what the policy needs to know about a task.
+// Access is what the policy needs to know about a task and the caller.
 type Access struct {
 	CreatedBy   string
 	OwnerIDs    []string
 	AssigneeIDs []string
+	// WorkspaceRole is the caller's role in the task's workspace.
+	WorkspaceRole string
 }
 
-func accessOf(t mdl.Task) Access {
-	a := Access{CreatedBy: t.CreatedBy.ID}
+func accessOf(t mdl.Task, c Caller) Access {
+	a := Access{CreatedBy: t.CreatedBy.ID, WorkspaceRole: c.Role}
 	for _, p := range t.Owners {
 		a.OwnerIDs = append(a.OwnerIDs, p.ID)
 	}
@@ -37,18 +39,20 @@ func accessOf(t mdl.Task) Access {
 	return a
 }
 
-// Evaluate is the single task permission policy (E5-S1), shared by the API
-// response (`viewer`) and enforcement (Authorize). Reference behaviour:
-//   - manage (edit fields, assignees, labels, delete): the creator or an owner
-//   - manage owners: the creator only
-//   - everyone else in the workspace can view. Assignees who can't manage will
+// Evaluate is the single task permission policy (E5-S1; ADR-0020, ADR-0021),
+// shared by the API response (`viewer`) and enforcement (Authorize):
+//   - workspace OWNER: manages every task, including its owners (ADR-0021)
+//   - creator: manages the task and its owners
+//   - task owner: manages the task, not its owners
+//   - everyone else in the workspace can view. Assignees who can't manage
 //     use change requests (E5-S2); until then they view.
 func Evaluate(a Access, userID string) mdl.Viewer {
+	isAdmin := a.WorkspaceRole == "OWNER"
 	isCreator := a.CreatedBy == userID
 	isOwner := slices.Contains(a.OwnerIDs, userID)
 	return mdl.Viewer{
-		CanManage:       isCreator || isOwner,
-		CanManageOwners: isCreator,
+		CanManage:       isAdmin || isCreator || isOwner,
+		CanManageOwners: isAdmin || isCreator,
 		IsAssignee:      slices.Contains(a.AssigneeIDs, userID),
 	}
 }

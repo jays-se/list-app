@@ -3,16 +3,21 @@
 package app
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/intellicars/list-app/apps/api/internal/apiserver"
+	"github.com/intellicars/list-app/apps/api/internal/blobstore"
 	"github.com/intellicars/list-app/apps/api/internal/config"
 	"github.com/intellicars/list-app/apps/api/internal/modules/auth/authhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/auth/authsvc"
+	"github.com/intellicars/list-app/apps/api/internal/modules/client/clienthdlr"
+	"github.com/intellicars/list-app/apps/api/internal/modules/client/clientsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelhdlr"
 	"github.com/intellicars/list-app/apps/api/internal/modules/label/labelsvc"
 	"github.com/intellicars/list-app/apps/api/internal/modules/system/systemhdlr"
@@ -31,10 +36,25 @@ type Options struct {
 	Log       *slog.Logger
 	Now       func() time.Time
 	StartedAt time.Time
+	// Blobs overrides the configured store (tests).
+	Blobs blobstore.Store
+}
+
+// Blobs builds the configured blob store (ADR-0022).
+func Blobs(cfg config.Config, now func() time.Time) (blobstore.Store, error) {
+	if cfg.BlobDriver == "s3" {
+		endpoint, err := url.Parse(cfg.S3Endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("app: S3_ENDPOINT: %w", err)
+		}
+		return &blobstore.S3{Endpoint: endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
+			AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, PathStyle: cfg.S3PathStyle, Now: now}, nil
+	}
+	return blobstore.NewLocal(cfg.BlobDir, cfg.SessionSecret, now)
 }
 
 // New builds the root handler and returns the router for contract checks.
-func New(cfg config.Config, o Options) (http.Handler, *apiserver.Router) {
+func New(cfg config.Config, o Options) (http.Handler, *apiserver.Router, error) {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
@@ -59,11 +79,22 @@ func New(cfg config.Config, o Options) (http.Handler, *apiserver.Router) {
 
 	workspaces := workspacehdlr.NewWorkspaceHdlr(workspacesvc.NewWorkspaceSvc(o.Pool, authSvc, o.Log), auth, o.Log)
 
-	tasks := taskhdlr.NewTaskHdlr(tasksvc.NewTaskSvc(o.Pool, o.Log), workspaces, o.Log)
+	blobs := o.Blobs
+	if blobs == nil {
+		var err error
+		if blobs, err = Blobs(cfg, o.Now); err != nil {
+			return nil, nil, err
+		}
+	}
+	tasks := taskhdlr.NewTaskHdlr(tasksvc.NewTaskSvc(o.Pool, blobs, o.Log), workspaces, o.Log)
 	labels := labelhdlr.NewLabelHdlr(labelsvc.NewLabelSvc(o.Pool, o.Log), workspaces, o.Log)
+	clients := clienthdlr.NewClientHdlr(clientsvc.NewClientSvc(o.Pool, o.Log), workspaces, o.Log)
 
-	return apiserver.NewHandler(o.Log,
-		[]apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels},
-		apiserver.CSRF(cfg.PublicOrigin(), authhdlr.IsDevAuthorize),
-	)
+	registrars := []apiserver.RouteRegistrar{system, auth, workspaces, tasks, labels, clients}
+	if local, ok := blobs.(*blobstore.Local); ok {
+		registrars = append(registrars, local) // signed /api/v1/blobs/{token} routes
+	}
+	csrfExempt := func(r *http.Request) bool { return authhdlr.IsDevAuthorize(r) || blobstore.IsBlobRoute(r) }
+	h, router := apiserver.NewHandler(o.Log, registrars, apiserver.CSRF(cfg.PublicOrigin(), csrfExempt))
+	return h, router, nil
 }

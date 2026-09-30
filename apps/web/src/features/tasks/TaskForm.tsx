@@ -89,6 +89,18 @@ export function TaskForm({
           </Select>
         </Field>
       </div>
+      <Field label="Client" validationMessage={fieldError(error, "clientId")}>
+        <Select
+          value={draft.clientId}
+          onChange={(e) => set("clientId", e.target.value)}
+        >
+          {options.clientOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <div className={styles.row3}>
         <Field
           label="Start"

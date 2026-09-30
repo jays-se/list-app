@@ -30,7 +30,9 @@ Reference implementations:
    ```
    Then spread it into `actions` in `packages/domain/src/index.ts`. `satisfies ActionRegistry` enforces the types.
    - Use `ctx.resetData()` only for tenant or session changes (switch, create or join a workspace, logout). Never call `client.clearAll()`.
-   - For optimistic UI, use `ctx.client.optimistic(key, updater)` before the call, and roll back in `catch`.
+   - For optimistic UI, use `ctx.client.optimistic(key, updater)` before the call, and roll back in `catch`. The reference is `checklist.update`.
+     - On the React side, **bind the control uncontrolled and key it on the worker's value** (`key={`${id}:${done}`}` with `defaultChecked`). The click shows instantly, and a rollback remounts the control with the saved state. A controlled input flickers back while the worker round-trip is in flight.
+   - Files: `File` objects are structured-cloneable, so pass them straight to the action. The worker checks limits, reserves a slot, then calls `ctx.upload(target, file, onProgress)` and `ctx.notify(progress)`. The UI reads progress with `useUploadProgress(taskId)`. The reference is `attachments.upload`.
 4. **UI:**
    - `const create = useAction("<feature>.<verb>")`.
    - Keep the draft input in `useState`; that's ephemeral UI state.

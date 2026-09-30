@@ -47,3 +47,14 @@ TEST_DATABASE_URL="postgres://postgres@127.0.0.1:55432/postgres?sslmode=disable"
 | `SESSION_TTL` | `720h` | Session lifetime |
 
 For Google sign-in locally, register the redirect URI `http://localhost:5173/api/v1/auth/google/callback`.
+
+## Blob storage (attachments, ADR-0022)
+| Variable | Default | Notes |
+|---|---|---|
+| `BLOB_DRIVER` | `local` | `local` (disk) or `s3` (MinIO, S3, R2…) |
+| `BLOB_DIR` | `data/blobs` | Local driver only, relative to the API's working directory (gitignored) |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | none | Required for `s3` |
+| `S3_REGION` / `S3_PATH_STYLE` | `us-east-1` / `true` | Use `S3_PATH_STYLE=false` for AWS virtual-hosted buckets |
+
+For the optional S3 round-trip test, create a bucket and run:
+`TEST_S3_ENDPOINT=http://127.0.0.1:9000 TEST_S3_BUCKET=… TEST_S3_ACCESS_KEY=… TEST_S3_SECRET_KEY=… go test ./internal/blobstore/`
